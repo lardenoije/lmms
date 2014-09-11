@@ -10,7 +10,7 @@
 
 \item{y}{\code{numeric} or \code{character} value. Either the row index or the row name determining which feature should be plotted.}
 
-\item{type}{a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'time*group'}.}
+\item{type}{a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'group*time'}.}
 
 \item{smooth}{an optional \code{logical} value.By default set to \code{FALSE}. If \code{TRUE} smooth representation of the fitted values.}
 
@@ -32,6 +32,6 @@ lmmsDEtestl1 <-lmmsDE(data=kidneySimTimeGroup$data,time=kidneySimTimeGroup$time,
 plot(lmmsDEtestl1,y=2,type="all")
 plot(lmmsDEtestl1,y=2,type="time")
 plot(lmmsDEtestl1,y=2,type="group")
-plot(lmmsDEtestl1,y=2,type="time*group",smooth=TRUE)}
+plot(lmmsDEtestl1,y=2,type="group*time",smooth=TRUE)}
 }
 

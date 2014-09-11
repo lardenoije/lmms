@@ -27,6 +27,7 @@
 #'              sampleID=kidneySimTimeGroup$sampleID,group=kidneySimTimeGroup$group)
 #' summary(lmmsDEtest)}
 
+#' @method summary lmmsde
 #' @export
 summary.lmmsde <-function(object, ...){
             cat('Differential Expression using Linear Mixed-Effect Model Splines. \n ')

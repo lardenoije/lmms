@@ -22,7 +22,7 @@
 #' @import graphics
 #' @param x An object of class \code{lmmsde}.
 #' @param y \code{numeric} or \code{character} value. Either the row index or the row name determining which feature should be plotted. 
-#' @param type a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'time*group'}.
+#' @param type a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'group*time'}.
 #' @param smooth an optional \code{logical} value.By default set to \code{FALSE}. If \code{TRUE} smooth representation of the fitted values. 
 #' @param \ldots Additional arguments which are passed to \code{plot}.
 #' @return plot showing raw data, mean profile and fitted profile. 
@@ -36,25 +36,25 @@
 #' plot(lmmsDEtestl1,y=2,type="all")
 #' plot(lmmsDEtestl1,y=2,type="time")
 #' plot(lmmsDEtestl1,y=2,type="group")
-#' plot(lmmsDEtestl1,y=2,type="time*group",smooth=TRUE)}  
+#' plot(lmmsDEtestl1,y=2,type="group*time",smooth=TRUE)}  
 
+#' @method plot lmmsde
 #' @export
 plot.lmmsde <- function(x, y, type, smooth, ...){
  # library(graphics)
   if(missing(type)){
     type <- c()
-    if(!is.na(x@modelGroup))
+    if(length(x@modelGroup)>0)
       type <- c(type,'group')
-    if(!is.na(x@modelTime))
+    if(length(x@modelTime)>0)
       type <- c(type,'time')
-    if(!is.na(x@modelTimeGroup))
-      type <- c(type,'time*group')
+    if(length(x@modelTimeGroup)>0)
+      type <- c(type,'group*time')
   }
    
-  if(type=="all"){
-    type <- c('time','group','time*group') 
+  if(length(grep("all",type))>0){
+    type <- c('time','group','group*time') 
   }
-  
   if(class(y)=='numeric')
     name <- x@DE$Molecule[y]
     
@@ -78,8 +78,8 @@ plot.lmmsde <- function(x, y, type, smooth, ...){
    name2 <- paste(name,'group')
    plotLmmsdeFunc(x@modelGroup,index=y,smooth=smooth,name2,...)
   }
-  if(sum(type%in%"time*group")>0){
-    name2 <- paste(name,'time*group')
+  if(sum(type%in%"group*time")>0){
+    name2 <- paste(name,'group*time')
     plotLmmsdeFunc(x@modelTimeGroup,index=y,smooth=smooth,name2,...)
   }
   par(mfrow=c(1,1))
@@ -103,8 +103,8 @@ plotLmmsdeFunc <- function(object,index,smooth,name,...){
     g1 <-which(group==unique(group)[1])
     g2 <- which(group==unique(group)[2])
     plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=ifelse(group==group[g1[1]],"blue","red"),pch=ifelse(group==group[g1[1]],16,17),...)
-    ext1 <- tapply(model$data$Exp[g1],model$data$time[g1],function(x)mean(x,na.rm=T))
-    ext2 <- tapply(model$data$Exp[g2],model$data$time[g2],function(x)mean(x,na.rm=T))
+    ext1 <- tapply(model$data$Expr[g1],model$data$time[g1],function(x)mean(x,na.rm=T))
+    ext2 <- tapply(model$data$Expr[g2],model$data$time[g2],function(x)mean(x,na.rm=T))
     ut1 <- unique(model$data$time[g1])
     ut2 <- unique(model$data$time[g2])
     lines(ext1~ut1, col='grey',lty=2)

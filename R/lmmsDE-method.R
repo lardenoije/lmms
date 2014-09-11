@@ -34,7 +34,7 @@
 #' @param group \code{character}, \code{numeric} or \code{factor} vector containing information about the group (or class) of each sample
 #' @param type \code{character} indicating what type of analysis is to be performed. Options are \code{"time"} to identify differential expression over time, \code{"group"} to identify profiles with different baseline levels (intercepts), and \code{"time*group"} an interaction between these two . Use \code{"all"} to calculate all three types.
 #' @param experiment \code{character} describing the experiment performed. \code{"timecourse"} for replicated experiments with less variation in individual expression values (e.g. model organism, cell culture), \code{"longitudinal1"} for different intercepts and \code{"longitudinal2"} for different intercepts and slopes. 
-#' @param basis \code{character} string. What type of basis to use, matching one of \code{"cubic"} smoothing spline as defined by Verbyla \emph{et al.} 1999, \code{"p-spline"} Durb\'an \emph{et al.} 2005 or a \code{"cubic p-spline"}.
+#' @param basis \code{character} string. What type of basis to use, matching one of \code{"cubic"} smoothing spline as defined by Verbyla \emph{et al.} 1999, \code{"p-spline"} Durban \emph{et al.} 2005 or a \code{"cubic p-spline"}.
 #' @param knots can take an integer value corresponding to the number of knots for the chosen basis or by default calculated as  in Ruppert 2002. Not in use for the 'cubic' smoothing spline basis.
 #' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. Default value is automatically estimated.
 #' @details
@@ -58,7 +58,7 @@
 #' \item{modelTimeGroup}{a \code{list} of class \code{\link{lme}}, containing the models for every feature modelling time and group interaction effect. }
 #' \item{type}{an object of class \code{character}, describing the test performed either time, group, time*group or all. }
 #' \item{experiment}{an object of class \code{character} describing the model used to perform differential expression analysis.}
-#' @references  Durbàn, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005). \emph{Simple fitting of subject-specific curves for longitudinal data.} Statistics in medicine, 24(8), 1153-67.
+#' @references  Durban, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005). \emph{Simple fitting of subject-specific curves for longitudinal data.} Statistics in medicine, 24(8), 1153-67.
 #' @references  Ruppert D. (2002). \emph{Selecting the number of knots for penalized splines.} Journal of Computational and Graphical Statistics 11, 735-757
 #' @references  Verbyla, A. P. Cullis, B. R., & Kenward, M. G. (1999). \emph{The analysis of designed experiments and longitudinal data by using smoothing splines.} Appl.Statist.(1999), 18(3), 269-311.
 #' @seealso \code{\link{summary.lmmsde}}, \code{\link{plot.lmmsde}}

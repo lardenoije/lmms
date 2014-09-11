@@ -33,7 +33,7 @@
 #' @param sampleID \code{ANY} vector containing information about the source of the sample
 #' @param timePredict \code{numeric} vector containing the time points to be predicted.  By default set to the original time points observed in the experiment.
 #' @param deri \code{logical} value. If \code{TRUE} returns the predicted derivative information on the observed time points.By default set to \code{FALSE}.
-#' @param basis \code{character} string. What type of basis to use, matching one of \code{"cubic"}, \code{"p-spline"} or \code{"cubic p-spline"}. The \code{"cubic"} basis (\code{default}) is the cubic smoothing spline as defined by Verbyla \emph{et al.} 1999, the \code{"p-spline"} is the truncated p-spline basis as defined by Durb\'an \emph{et al.} 2005.
+#' @param basis \code{character} string. What type of basis to use, matching one of \code{"cubic"}, \code{"p-spline"} or \code{"cubic p-spline"}. The \code{"cubic"} basis (\code{default}) is the cubic smoothing spline as defined by Verbyla \emph{et al.} 1999, the \code{"p-spline"} is the truncated p-spline basis as defined by Durban \emph{et al.} 2005.
 #' @param knots Alternatively an \code{integer}, the number of knots used for the \code{"p-spline"} or \code{"cubic p-spline"} basis calculation. Otherwise calculated as proposed by Ruppert 2002. Not used for the "cubic" smoothing spline basis.
 #' @param numCores Alternative \code{numeric} value indicating the number of CPU cores to be used. Default value is automatically estimated.
 #' @details  
@@ -77,7 +77,7 @@
 #' \item{modelsUsed}{\code{numeric} vector indicating the model used to fit the data. 0 = linear model, 1=linear mixed effect model spline (LMMS) with defined basis ('cubic' by default) 2 = LMMS taking subject-specific random intercept, 3 = LMMS with subject specific intercept and slope.}
 #' \item{model}{\code{list} of models used to model time profiles.}
 #' \item{derivative}{\code{logical} value indicating if the predicted values are the derivative information.}
-#' @references  Durbàn, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005).  \emph{Simple fitting of subject-specific curves for longitudinal data.} Statistics in medicine, 24(8), 1153-67.
+#' @references  Durban, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005).  \emph{Simple fitting of subject-specific curves for longitudinal data.} Statistics in medicine, 24(8), 1153-67.
 #' @references  Ruppert D. (2002).  \emph{Selecting the number of knots for penalized splines.} Journal of Computational and Graphical Statistics 11, 735-757
 #' @references  Verbyla, A. P. Cullis, B. R., & Kenward, M. G. (1999). \emph{The analysis of designed experiments and longitudinal data by using smoothing splines.} Appl.Statist.(1999), 18(3), 269-311.
 #' @seealso \code{\link{summary.lmmspline}}, \code{\link{plot.lmmspline}}, \code{\link{predict.lmmspline}}, \code{\link{deriv.lmmspline}}

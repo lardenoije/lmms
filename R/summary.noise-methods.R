@@ -14,45 +14,42 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-#' Summary of a \code{lmmspline} Object
+#' Summary of a \code{noise} Object
 #' 
-#' Summarizes the \code{lmmspline} object returned by the \code{\link{lmmSpline}} method. Including the models fitted and parameter used.
-#' @param object An object of class \code{lmmspline}.
-#' @param ... Additional arguments which are passed to \code{summary}.
-#' @return Summary of the \code{lmmspline} object.
+#' Summarizes the \code{noise} object returned by the \code{\link{investNoise}} method.
+#' @param object An object of class \code{noise}.
+#' @param ... ignored
+#' @return Summary of the \code{noise} object.
 #' @examples
 #' \dontrun{
 #' data(kidneySimTimeGroup)
 #' # running for samples in group 1
 #' G1 <- which(kidneySimTimeGroup$group=="G1")
-#' testLMMSplineTG<- lmmSpline(data=kidneySimTimeGroup$data[G1,],
+#' noiseTest<- investNoise(data=kidneySimTimeGroup$data[G1,],
 #'                   time=kidneySimTimeGroup$time[G1],
 #'                   sampleID=kidneySimTimeGroup$sampleID[G1])
-#' summary(testLMMSplineTG)}
+#' summary(noiseTest)}
 
-#' @method summary lmmspline
+#' @method summary noise
 #' @export
-summary.lmmspline <- function(object,...){
-            cat('Data-driven Linear Mixed-Effect Model Splines \n ')
-            di <- dim(object@predSpline)
-            cat(paste('Profiles were modelled for',di[1],'features with ',di[2],'time points.\n'))
+summary.noise <- function(object,...){
+            cat('Time course noise level summary \n ')
             cat(' \n ')
-            cat('Basis: \n ')
-            print(object@basis)
+            cat('R_T level info: \n ')
             cat(' \n ')
-            cat('Knots: \n ')
+            print( summary(object@RT)[c(1,4,6)])
             cat(' \n ')
-            print(object@knots)
+            cat('R_I level info: \n ')
             cat(' \n ')
-            cat('Time points: \n ')
+            print( summary(object@RI)[c(1,4,6)])
             cat(' \n ')
-            print(as.numeric(colnames(object@predSpline)))
+            cat('Proportion of missing values: \n ')
             cat(' \n ')
-            cat('Table of models used to model profiles: ')
-            print(table(object@modelsUsed))
+            print( summary(object@propMissing)[c(1,4,6)])
             cat(' \n ')
-            cat('Profiles not modelled: \n')
-            print(object@errorMolecules)
+            cat('Fold changes: \n ')
+            cat(' \n ')
+            print(summary(object@foldChange)[c(1,4,6)])
           }
 
 

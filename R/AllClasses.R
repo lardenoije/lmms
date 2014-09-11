@@ -66,4 +66,21 @@ setClass("lmmspline",slots= c(predSpline="data.frame", modelsUsed="numeric",mode
 
 setClass("lmmsde",slots= c(DE="data.frame", modelTime="list", modelGroup="list", modelTimeGroup="list",type="character",experiment="character"),contains='lmms')
 
+#'  \code{noise} S4 class
+#'
+#' The class \code{noise} is returned when applying \code{\link{investNoise}} method.
+#'
+#' @slot name  \code{character} vector. The name of the trajectory. 
+#' @slot RT A \code{numeric} vector, containing the time to molecule standard deviation ratios for every trajectory. 
+#' @slot RI A \code{numeric} vector, containing the individual to molecule standard deviation ratios for every trajectory. 
+#' @slot propMissing A \code{numeric} vector, containing the proportion of missing values for every trajectory. 
+#' @slot foldChange A \code{numeric} vector, containing the maximum fold change of the mean between any two time points. 
+#'  
+#'
+#' @name noise-class
+#' @rdname noise-class
+#' @exportClass noise
+
+setClass("noise",slots= c(name="character",RT="numeric", RI="numeric", propMissing="numeric", foldChange="numeric"))
+
 

@@ -26,7 +26,7 @@
 #' @param object an object inheriting from class \code{lmmspline}.
 #' @param timePredict an optional \code{numeric} vector. Vector of time points to predict fitted values. If \code{missing} uses design points. 
 #' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. By default estimated automatically.
-#' @param ... Additional arguments which are passed to \code{predict}.
+#' @param ... ignored.
 #' @return \code{matrix} containing predicted values for the requested time points from argument \code{timePredict}. 
 #' @examples
 #' \dontrun{

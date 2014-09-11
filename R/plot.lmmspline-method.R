@@ -36,6 +36,7 @@
 #' plot(testLmmspline, y=2)
 #' plot(testLmmspline, y=2, smooth=TRUE)}
 
+#' @method plot lmmspline
 #' @export
 plot.lmmspline <- function(x, y, smooth, ...){
   if(length(y)>1)
@@ -74,18 +75,18 @@ plotLmms <- function(model,smooth,name,...){
   p <- NULL
 
   if(cl=="lm"){
-    yl <- range(na.omit(model$model$Expr))
+    yl <- range(na.omit(model$data$Expr))
     yl[2] <- yl[2]+0.2
     
-    plot(model$model$Expr~model$model$time,xlab='Time',ylab='Intensity',main=name,pch=16,col="blue",ylim=yl,...)
-    ext <- tapply(model$model$Exp,model$model$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$model$time)
+    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',main=name,pch=16,col="blue",ylim=yl,...)
+    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
+    ut <- unique(model$data$time)
      lines(ext~ut, type='l',col='grey',lty=2)
     if(smooth){
-      s <- spline(x = model$model$time, y = fitted(model), n = 500, method = "natural")
+      s <- spline(x = model$data$time, y = fitted(model), n = 500, method = "natural")
 
     }else{
-      s <- data.frame(y=fitted(model),x=model$model$time)
+      s <- data.frame(y=fitted(model),x=model$data$time)
     }
   }
   
@@ -94,7 +95,7 @@ plotLmms <- function(model,smooth,name,...){
     yl[2] <- yl[2]+0.2
 
     plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',pch=16,col='blue',main=name,ylim=yl,...)
-    ext <- tapply(model$data$Exp,model$data$time,function(x)mean(x,na.rm=T))
+    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
     ut <- unique(model$data$time)
    
     f <- fitted(model,level=1)
@@ -119,13 +120,13 @@ plotLmmsDeriv <- function(model,smooth,data,name,...){
     smooth <- F
   cl <- class(model)
   p <- NULL
-  
+
   if(cl=="lm"){
-    yl <- range(na.omit(unlist(c(model$model$Expr,data))))
+    yl <- range(na.omit(unlist(c(model$data$Expr,data))))
     yl[2] <- yl[2]+0.2
-    plot(model$model$Expr~model$model$time,xlab='Time',ylab='Intensity',ylim=yl,pch=16,col="blue",main=name,...)
-    ext <- tapply(model$model$Exp,model$model$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$model$time)
+    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,pch=16,col="blue",main=name,...)
+    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
+    ut <- unique(model$data$time)
     if(smooth){
       s <- spline(x = as.numeric(colnames(data)), y = data, n = 500, method = "natural")
     }else{
@@ -137,7 +138,7 @@ plotLmmsDeriv <- function(model,smooth,data,name,...){
     yl <- range(na.omit(unlist(c(model$data$Expr,data))))
     yl[2] <- yl[2]+0.2
     plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,pch=16,col="blue",main=name,...)
-    ext <- tapply(model$data$Exp,model$data$time,function(x)mean(x,na.rm=T))
+    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
     ut <- unique(model$data$time)
 
     f <- fitted(model,level=1)

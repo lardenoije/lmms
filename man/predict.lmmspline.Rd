@@ -12,7 +12,7 @@
 
 \item{numCores}{alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. By default estimated automatically.}
 
-\item{...}{Additional arguments which are passed to \code{predict}.}
+\item{...}{ignored.}
 }
 \value{
 \code{matrix} containing predicted values for the requested time points from argument \code{timePredict}.
