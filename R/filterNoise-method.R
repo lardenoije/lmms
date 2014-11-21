@@ -44,6 +44,7 @@
 #'              
 #'              
 #' #Alternatively model-based clustering can be used for filtering
+#' library(mclust)
 #' bestCluster <- names(meanRTCluster[which.min(meanRTCluster)])
 #' filterdata <- kidneySimTimeGroup$data[G1,clusterFilter$classification==bestCluster]
 #'               
@@ -63,6 +64,10 @@ setMethod('filterNoise',c(data="matrixOrframe",noise="noise",RTCutoff="missingOr
   filter.Noise(data=data,noise=noise,RTCutoff=RTCutoff,RICutoff=RICutoff,propMissingCutoff=propMissingCutoff,fcCutoff=fcCutoff)
 })
 
+#library(mclust)
+#clusterFilter <- Mclust(cbind(noiseTest@RT,noiseTest@RI),G=2)
+#plot(clusterFilter,what = "classification")
+#meanRTCluster <-tapply(noiseTest@RT,clusterFilter$classification,mean)
 
 filter.Noise <- function(data,noise,RTCutoff,RICutoff,propMissingCutoff,fcCutoff){
     rows <- ncol(data)

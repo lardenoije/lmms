@@ -15,14 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-#' Plot of \code{noise} objects
+#' Plot of \code{associations} objects
 #' 
 #' Plot of the filter ratios R_T and R_I as proposed by Straube et al 2014.
 #' 
 #' @import gplots
 #' @import ggplot2
-#' @param x an object of class \code{noise}.
-#' @param colorBy \code{character} the variable to be colored by.  Default  \code{'propMissing'}, options: \code{'propMissing'},\code{'fc'}.
+#' @param x an object of class \code{matrix} or \code{data.frame}.
+#' @param colorBy \code{associations} the variable to be colored by.  Default  \code{'propMissing'}, options: \code{'propMissing'},\code{'fc'}.
 #' @param fcCutoff an optional \code{numeric} value to remove ratios with low fold changes.
 #' @param propMissingCutoff an optional \code{numeric} value to remove ratios with high number of missing values. 
 #' @param \ldots ignored

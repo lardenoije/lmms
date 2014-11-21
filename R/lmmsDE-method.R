@@ -27,7 +27,7 @@
 #' @import parallel
 #' @import methods
 #' @usage lmmsDE(data, time, sampleID, group, type,
-#' experiment, basis, knots, numCores)
+#' experiment, basis, knots,keepModels, numCores)
 #' @param data \code{data.frame} or \code{matrix} containing the samples as rows and features as columns
 #' @param time \code{numeric} vector containing the sample time point information.
 #' @param sampleID \code{character}, \code{numeric} or \code{factor} vector containing information about the unique identity of each sample
@@ -37,6 +37,7 @@
 #' @param basis \code{character} string. What type of basis to use, matching one of \code{"cubic"} smoothing spline as defined by Verbyla \emph{et al.} 1999, \code{"p-spline"} Durban \emph{et al.} 2005 or a \code{"cubic p-spline"}.
 #' @param knots can take an integer value corresponding to the number of knots for the chosen basis or by default calculated as  in Ruppert 2002. Not in use for the 'cubic' smoothing spline basis.
 #' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. Default value is automatically estimated.
+#' @param keepModels alternative \code{logical} value if you want to keep the model output. Default value is FALSE
 #' @details
 #' lmmsDE extends the LMMS modelling framework to permit tests between groups, across time, and for interactions between the two. 
 #' Suppose we have \eqn{R} different groups of individuals, with \eqn{h_i} denoting the group for each individual \eqn{i}. 
@@ -70,35 +71,59 @@
 #' summary(lmmsDEtest)}
 #' @docType methods
 #' @rdname lmmsDE-methods
+# @export
+#setGeneric('lmmsDE',function(data,time,sampleID,group,type,experiment,basis,knots,keepModels,numCores){standardGeneric('lmmsDE')})
+#setClassUnion("missingOrnumeric", c("missing", "numeric"))
+#setClassUnion("missingOrlogical", c("missing", "logical"))
+#setClassUnion("missingOrcharacter", c("missing", "character"))
+#setClassUnion("factorOrcharacterOrnumeric", c( "factor","character","numeric"))
+#setClassUnion("matrixOrframe",c('matrix','data.frame'))
+# @rdname lmmsDE-methods
+# @aliases lmmsDE lmmsDE,matrixOrframe,numeric,factorOrcharacterOrnumeric,
+# factorOrcharacterOrnumeric,missingOrcharacter,missingOrcharacter,missingOrcharacter,
+# missingOrnumeric,missingOrlogical,missingOrnumeric-method
+# @exportMethod lmmsDE
+
+#setMethod('lmmsDE',c(data="matrixOrframe",time="numeric",sampleID="character",group="character",type="missing",experiment="missing",basis="missing",knots="missing",keepModels="missing",numCores="missing"), function(data,time,sampleID,group,type,experiment,basis,knots,keepModels,numCores){
+#  lmmsDEPara(data=data,time=time,sampleID=sampleID,group=group,type=type,experiment=experiment,basis=basis,keepModels=keepModels,numCores=numCores)
+#})
+
+
+#setMethod('lmmsDE',c(data="matrixOrframe",time="numeric",sampleID="factorOrcharacterOrnumeric",group="factorOrcharacterOrnumeric",type="missingOrcharacter",experiment="missingOrcharacter",basis="missingOrcharacter",knots="missingOrnumeric",keepModels="missingOrlogical",numCores="missingOrnumeric"), function(data,time,sampleID,group,type,experiment,basis,knots,keepModels,numCores){
+#  lmmsDEPara(data=data,time=time,sampleID=sampleID,group=group,type=type,experiment=experiment,basis=basis,keepModels=keepModels,numCores=numCores)
+#})
+# @method lmmsDE data.frame
 #' @export
-setGeneric('lmmsDE',function(data,time,sampleID,group,type,experiment,basis,knots,numCores){standardGeneric('lmmsDE')})
-setClassUnion("missingOrnumeric", c("missing", "numeric"))
-setClassUnion("missingOrcharacter", c("missing", "character"))
-setClassUnion("factorOrcharacterOrnumeric", c( "factor","character","numeric"))
-setClassUnion("matrixOrframe",c('matrix','data.frame'))
-#' @rdname lmmsDE-methods
-#' @aliases lmmsDE lmmsDE,matrixOrframe,numeric,factorOrcharacterOrnumeric,
-#' factorOrcharacterOrnumeric,missingOrcharacter,missingOrcharacter,missingOrcharacter,
-#' missingOrnumeric,missingOrnumeric-method
-#' @exportMethod lmmsDE
+lmmsDE <- function(data, time, sampleID, group, type,experiment,basis,knots,keepModels,numCores){
 
-setMethod('lmmsDE',c(data="matrixOrframe",time="numeric",sampleID="factorOrcharacterOrnumeric",group="factorOrcharacterOrnumeric",type="missingOrcharacter",experiment="missingOrcharacter",basis="missingOrcharacter",knots="missingOrnumeric",numCores="missingOrnumeric"), function(data,time,sampleID,group,type,experiment,basis,knots,numCores){
-  lmmsDEPara(data=data,time=time,sampleID=sampleID,group=group,type=type,experiment=experiment,basis=basis,numCores=numCores)
-})
-
-lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,numCores){
-
+  #require(lmeSplines)
+  #require(parallel)
+  #require(gdata)
+  #require(reshape)
   model.time <- list()
   model.time.group <- list()
   model.group <- list()
-
-  if(missing(basis))
-    basis<-'cubic'
-  if(missing(experiment))
-    experiment<-'timecourse'
-  if(missing(type))
-    type<-'all'
+  if(missing(keepModels))
+    keepModels <- F
   
+  if(!is.logical(keepModels))
+    stop('keepModels needs to be of type logical')
+  
+  if(missing(type))
+    type <- 'all'
+  
+  if(missing(basis))
+    basis <- 'cubic'
+  
+  if(missing(knots))
+    knots <- NULL
+  
+  if(missing(experiment))
+    experiment <- 'timecourse'
+  
+  if(missing(keepModels))
+    keepModels <- F
+
   if(type=="time*group")
     type <- "grouptime"
   
@@ -118,48 +143,20 @@ lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,
   
   if(diff(range(c(length(sampleID),length(time),length(group),nrow(data))))>0)
     stop("Size of the input vectors sampleID, time, group and ncol(data) are not equal")
-  if(missing(knots)& (basis=="p-spline"|basis=='cubic p-spline'))
+  if(is.null(knots)& (basis=="p-spline"|basis=='cubic p-spline'))
     warning("The number of knots is automatically estimated")
-
-  data <- other.reshape.group(Rep=sampleID,Time=time,Data=data,Group=group)
+  
   
   if(length(unique(group))==1){
     warning("Only single group detected! Performing only time effect test.")
     type <- 'time'
   }
   
-  
-  data$Group <- as.factor(data$Group)
-  data$time = as.numeric(as.character(data$Time))
-  data$Expr = as.numeric(as.character(data$Expr))
-  data$all= rep(1,nrow(data))
-  
 
-  #### CUBIC SPLINE BASIS ####
-  if(basis=="cubic"){
-    data$Zt <- smspline(~ time, data=data)
-    knots <- sort(unique(data$time))[-c(1,length(unique(data$time)))]
-  }
-  #### PENALIZED SPLINE BASIS#####
-  if(basis%in%c("p-spline","cubic p-spline")){
-    if(missing(knots)){
-      K <- max(5,min(floor(length(unique(data$time))/4),40))
-      knots <- quantile(na.omit(unique(data$time)),seq(0,1,length=K+2))[-c(1,K+2)]
-    }
-    
-    PZ <- outer(data$time,knots,"-")
-    if(basis=="cubic p-spline"){
-      PZ <- PZ^3
-    }
-    PZ <- PZ *(PZ>0)
-    data$Zt <- PZ 
-    
-  }
-  
   nMolecules <- NULL
-  nMolecules <- length(unique(data$Molecule))
+  nMolecules <- ncol(data)
   
-  levels.genotype <- unique(data$Group)
+  #levels.genotype <- unique(data$Group)
   pvals <- c()
   k<-0
     
@@ -177,14 +174,44 @@ lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,
   lme <- nlme::lme
   cl <- makeCluster(num.Cores,"SOCK")
 
-  clusterExport(cl, list('lme','data','try','anova','type','pvals'),envir=environment())
+  clusterExport(cl, list('lme','sampleID','time','group','data','gsub','try','outer','melt','knots','basis','smspline','cast','drop.levels','anova','type','pvals','keepModels','lmeControl','nlme','pdIdent','other.reshape.group'),envir=environment())
+  
+  pred.time <- NA
+  pred.time.group <- NA
+  pred.group <- NA
   models <-list()
   
   new.data <- parLapply(cl,1:nMolecules,fun = function(i){
+    expr <- data[,i]
+    data <- other.reshape.group(Rep=sampleID,Time=time,Data=unlist(expr),Group=group)
+    data$Group <- as.factor(data$Group)
+    data$time = as.numeric(as.character(data$Time))
+    data$Expr = as.numeric(as.character(data$Expr))
+    data$all= rep(1,nrow(data))
     
- 
+    
+    #### CUBIC SPLINE BASIS ####
+    if(basis=="cubic"){
+      data$Zt <- smspline(~ time, data=data)
+      knots <- sort(unique(data$time))[-c(1,length(unique(data$time)))]
+    }
+    #### PENALIZED SPLINE BASIS#####
+    if(basis%in%c("p-spline","cubic p-spline")){
+      if(is.null(knots)){
+        K <- max(5,min(floor(length(unique(data$time))/4),40))
+        knots <- quantile(na.omit(unique(data$time)),seq(0,1,length=K+2))[-c(1,K+2)]
+      }
+      
+      PZ <- outer(data$time,knots,"-")
+      if(basis=="cubic p-spline"){
+        PZ <- PZ^3
+      }
+      PZ <- PZ *(PZ>0)
+      data$Zt <- PZ 
+      
+    }
     options(contrasts=c('contr.treatment','contr.poly'))
-    tmp.data <- data[which(data$Molecule==unique(data$Molecule)[i]),]
+    tmp.data <- data
     p1 <- NA
     p2 <- NA
     p3 <- NA
@@ -228,11 +255,15 @@ lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,
              }
 
       
-      
-      model.group <- fit2
+
       if(class(fit0) != 'try-error' & class(fit2) != 'try-error'){
         p1 <- anova(fit0,fit2)$`p-value`[2][1]
         
+      }
+      if(keepModels){
+        model.group <- fit2
+      }else{
+        pred.group <- na.omit(unique(fitted(fit2,level=1)))
       }
     }
     
@@ -266,14 +297,19 @@ lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,
                        random=list(all=pdIdent(~Zt - 1),Rep=pdDiag(~time)),
                        na.action=na.exclude, control=lmeControl(opt = "optim"),method="ML"))
       }
-      
-      model.time <- fit3
+
     
       if(class(fit0) != 'try-error'& class(fit3) != 'try-error'){
         p2 <- anova(fit0,fit3)$`p-value`[2][1]
          
       }
+      if(keepModels){
+          model.time <- fit3
+          }else{
+            pred.time <- na.omit(unique(fitted(fit3,level=1)))
+          }
     }
+    
     
     ###########group*time interaction#################
     if(type=="grouptime"|type=="all"){
@@ -307,47 +343,81 @@ lmmsDEPara <- function(data, sampleID, time, group, type,experiment,basis,knots,
         
       }
 
-      model.time.group <- fit5
       if(class(fit0) != 'try-error'& class(fit5) != 'try-error'){
         p3 <- anova(fit0,fit5)$`p-value`[2][1]
         
       }
+      
+      if(keepModels){
+        model.time.group <- fit5
+      }else{
+        pred.time.group <- na.omit(unique(fitted(fit5,level=1)))
+      }
+        
     }
     
     pvals<-c(p1,p2,p3)
-    return(list(pvals=pvals,model.time=model.time,model.group=model.group,model.time.group=model.time.group))
+    
+
+    
+    if(keepModels){
+      return(list(pvals=pvals,model.time=model.time,model.group=model.group,model.time.group=model.time.group,knots=knots))
+    }else{
+      return(list(pvals=pvals,knots=knots,pred.time=pred.time,pred.time.group=pred.time.group,pred.group=pred.group))
+    }
+      
 })
- 
+                       
 
-                  
                         new.df <- matrix(sapply(new.data,'[[','pvals'),nrow=nMolecules,ncol=3,byrow=T)
-                        model.time <- sapply(new.data,'[','model.time')
-                        model.group <- sapply(new.data,'[','model.group')
-                        model.time.group <- sapply(new.data,'[','model.time.group')
+                        knots <- unique(as.vector((sapply(new.data,'[[','knots'))))
+                        model.time <- list()
+                        model.group <- list()
+                        model.time.group <- list()
+                        pred.time <- matrix()
+                        pred.group <- matrix()
+                        pred.group.time <- matrix()
+                    if(keepModels){
+                          model.time <- sapply(new.data,'[','model.time')
+                          model.group <- sapply(new.data,'[','model.group')
+                          model.time.group <- sapply(new.data,'[','model.time.group')
+                    }else{
+                      pred.time <- matrix(sapply(new.data,'[[','pred.time'),nrow=nMolecules,ncol=length(unique(time)),byrow=T)
+                      colnames(pred.time) <- sort(unique(time))
+                      pred.group <- matrix(sapply(new.data,'[[','pred.group'),nrow=nMolecules,ncol=(length(unique(time))*2),byrow=T)
+                    
+                      pred.group.time <- matrix(sapply(new.data,'[[','pred.group'),nrow=nMolecules,ncol=(length(unique(time))*2),byrow=T)
+                      colnames(pred.group) <- colnames(pred.group.time) <- paste(c(sort(unique(group))),rep(sort(unique(time)),each=2))
+                    }
+                    molnames <-  colnames(data)             
+                    if(is.null(molnames))
+                      molnames <- 1:ncol(data)
 
-  df <- data.frame(Molecule=as.character(unique(data$Molecule)),Time=new.df[,2],adj.Time=signif(p.adjust(new.df[,2],method="BH"),2), Group=new.df[,1],adj.Group=signif(p.adjust(new.df[,1],method="BH"),2),Group_Time=new.df[,3],adj.Group_Time=signif(p.adjust(new.df[,3],method="BH"),2))
+    
+  df <- data.frame(Molecule=molnames,Time=new.df[,2],adj.Time=signif(p.adjust(new.df[,2],method="BH"),2), Group=new.df[,1],adj.Group=signif(p.adjust(new.df[,1],method="BH"),2),Group_Time=new.df[,3],adj.Group_Time=signif(p.adjust(new.df[,3],method="BH"),2))
 
-  l <- new('lmmsde',DE=df, modelTime=model.time, modelGroup=model.group, modelTimeGroup=model.time.group,knots=knots,basis=basis,type=type,experiment=experiment)
+  l <- new('lmmsde',DE=df, modelTime=model.time, modelGroup=model.group, modelTimeGroup=model.time.group,knots=knots,basis=basis,type=type,experiment=experiment,predTime=pred.time,predGroup=pred.group,predTimeGroup=pred.group.time)
   return(l)
 
 }
 
 other.reshape.group <- function(Rep, Time, Data,Group){
   lme.data<-NULL
+  #require(reshape)
   if(sum(table(Rep,Time)>1)!=0)
     stop('Make sure you have one time point per individual')
-  lme.data <- data.frame(Time=Time,Rep=Rep,Group=Group,as.matrix(Data))
+  lme.data <- data.frame(Time=Time,Rep=Rep,Group=Group,Data)
   
   lme.data$Time = factor(drop.levels(lme.data$Time))
   lme.data$Rep = factor(drop.levels(lme.data$Rep))
   lme.data$Group = factor(drop.levels(lme.data$Group))
   
   melt.lme.data <-NULL
-  melt.lme.data <- melt(lme.data)
+  melt.lme.data <- reshape::melt(lme.data)
   cast.lme.data  <- NULL
   cast.lme.data <- cast(melt.lme.data, variable+ Group+Rep ~ Time)
   melt.lme.data2 <- NULL
-  melt.lme.data2 <-  melt(data.frame(cast.lme.data))
+  melt.lme.data2 <-  reshape::melt(data.frame(cast.lme.data))
   
   names(melt.lme.data2) <- c("Molecule",  "Group","Rep", "Time", "Expr")
   melt.lme.data2$Time <- factor(gsub("^X", "", as.character(melt.lme.data2$Time)))

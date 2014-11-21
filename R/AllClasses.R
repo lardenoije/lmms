@@ -56,15 +56,20 @@ setClass("lmmspline",slots= c(predSpline="data.frame", modelsUsed="numeric",mode
 #' @slot modelTime A \code{list} of class\code{\link{lme}}, containing the models for every molecule modelling the time effect. 
 #' @slot modelGroup A \code{list} of class \code{\link{lme}}, containing the models for every molecule modelling group effect. 
 #' @slot modelTimeGroup A \code{list} of class \code{\link{lme}}, containing the models for every molecule modelling time and group interaction effect. 
+#' @slot predTime A \code{matrix} returning the predicted time fit.
+#' @slot predGroup A \code{matrix} returning the predicted group fit.
+#' @slot predTimeGroup A \code{matrix} returning the predicted time group interaction fit.
 #' @slot type An object of class \code{character}, describing the test performed. 
 #' @slot experiment An object of class \code{character} describing the model used to perform differential expression analysis.
-#'  
-#'
+#' @slot predTime A \code{matrix} returning the predicted time fit.
+#' @slot predGroup A \code{matrix} returning the predicted group fit.
+#' @slot predTimeGroup A \code{matrix} returning the predicted time group interaction fit.
+#' 
 #' @name lmmsde-class
 #' @rdname lmmsde-class
 #' @exportClass lmmsde
 
-setClass("lmmsde",slots= c(DE="data.frame", modelTime="list", modelGroup="list", modelTimeGroup="list",type="character",experiment="character"),contains='lmms')
+setClass("lmmsde",slots= c(DE="data.frame", predTime="matrix",predGroup="matrix",predTimeGroup="matrix",modelTime="list", modelGroup="list", modelTimeGroup="list",type="character",experiment="character"),contains='lmms')
 
 #'  \code{noise} S4 class
 #'

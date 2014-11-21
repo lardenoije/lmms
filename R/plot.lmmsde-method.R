@@ -22,6 +22,9 @@
 #' @import graphics
 #' @param x An object of class \code{lmmsde}.
 #' @param y \code{numeric} or \code{character} value. Either the row index or the row name determining which feature should be plotted. 
+#' @param data alternative \code{matrix} or \code{data.frame} containing the original data for visualisation purposes.
+#' @param time alternative \code{numeric} indicating the sample time point. Vector of same length as row lenghth of data for visualisation purposes.
+#' @param group alternative \code{numeric} indicating the sample group. Vector of same length as row lenghth of data for visualisation purposes.
 #' @param type a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'group*time'}.
 #' @param smooth an optional \code{logical} value.By default set to \code{FALSE}. If \code{TRUE} smooth representation of the fitted values. 
 #' @param \ldots Additional arguments which are passed to \code{plot}.
@@ -32,23 +35,34 @@
 #' lmmsDEtestl1 <-lmmsDE(data=kidneySimTimeGroup$data,time=kidneySimTimeGroup$time,
 #'                 sampleID=kidneySimTimeGroup$sampleID,
 #'                 group=kidneySimTimeGroup$group,
-#'                 experiment="longitudinal1",basis="p-spline") 
+#'                 experiment="longitudinal1",basis="p-spline",keepModels=T) 
 #' plot(lmmsDEtestl1,y=2,type="all")
 #' plot(lmmsDEtestl1,y=2,type="time")
 #' plot(lmmsDEtestl1,y=2,type="group")
-#' plot(lmmsDEtestl1,y=2,type="group*time",smooth=TRUE)}  
+#' plot(lmmsDEtestl1,y=2,type="group*time",smooth=TRUE)
+#' 
+#' #to save memory do not keep the models
+#' lmmsDEtestl1 <-lmmsDE(data=kidneySimTimeGroup$data,time=kidneySimTimeGroup$time,
+#'                 sampleID=kidneySimTimeGroup$sampleID,
+#'                 group=kidneySimTimeGroup$group,
+#'                 experiment="longitudinal1",basis="p-spline",keepModels=F) 
+#'# just the fitted trajectory                 
+#' plot(lmmsDEtestl1,y=2,type="all")
+#' 
+#' plot(lmmsDEtestl1,y=2,type="all",data=kidneySimTimeGroup$data,time=kidneySimTimeGroup$time,
+#' group=kidneySimTimeGroup$group)}  
 
 #' @method plot lmmsde
 #' @export
-plot.lmmsde <- function(x, y, type, smooth, ...){
+plot.lmmsde <- function(x, y, data, type, smooth,time,group, ...){
  # library(graphics)
   if(missing(type)){
     type <- c()
-    if(length(x@modelGroup)>0)
+    if(length(x@modelGroup)>0|ncol(x@predGroup)>1)
       type <- c(type,'group')
-    if(length(x@modelTime)>0)
+    if(length(x@modelTime)>0|ncol(x@predTime)>1)
       type <- c(type,'time')
-    if(length(x@modelTimeGroup)>0)
+    if(length(x@modelTimeGroup)>0|ncol(x@predTimeGroup)>1)
       type <- c(type,'group*time')
   }
    
@@ -72,15 +86,27 @@ plot.lmmsde <- function(x, y, type, smooth, ...){
   
   if(sum(type%in%'time')>0){
     name2 <- paste(name,'time')
+    if(length(x@modelTime)>0){
     plotLmms(x@modelTime[[y]],smooth=smooth,name2,...)
+    }else{
+      plotModel(x@predTime,y,smooth=smooth,name2,data=data,time2=time)
+    }
   }
   if(sum(type%in%"group")>0){
    name2 <- paste(name,'group')
+   if(length(x@modelGroup)>0){
    plotLmmsdeFunc(x@modelGroup,index=y,smooth=smooth,name2,...)
+   }else{
+     plotModel(x@predGroup,y,smooth=smooth,name2,data=data,time2=time,group=group)
+   }
   }
   if(sum(type%in%"group*time")>0){
     name2 <- paste(name,'group*time')
+    if(length(x@modelTimeGroup)>0){
     plotLmmsdeFunc(x@modelTimeGroup,index=y,smooth=smooth,name2,...)
+    } else{
+      plotModel(x@predTimeGroup,y,smooth=smooth,name2,data=data,time2=time,group=group)
+    }
   }
   par(mfrow=c(1,1))
     
@@ -126,4 +152,77 @@ plotLmmsdeFunc <- function(object,index,smooth,name,...){
     }
  
     legend('topleft',legend=paste(group[c(g1[1],g2[1])],rep(c("Raw","Fitted","Mean"),each=2)),col=c('blue','red','black','brown','lightgrey','rosybrown'),lty=c(NA,NA,1,1,2,2),pch=c(16,17,NA,NA,NA,NA),ncol=3,cex=0.8,bty='n')
+}
+
+plotModel <- function(object,index,smooth,name,data,time2,group,...){
+  if(missing(smooth))
+    smooth <- F
+  model <- object[index,]
+
+  s <- strsplit(colnames(object),split = " ")
+  s <- sapply(s,'[')
+
+  if(!is.null(dim(s))){
+    time <- as.numeric(as.character(s[2,]))
+    
+    g1 <- which(s[1,]==(unique(s[1,])[1]))
+    g2 <- which(s[1,]==(unique(s[1,])[2]))
+    if(!missing(data) & !missing(time2) & !missing(group)){
+      yl <- range(na.omit(data[,index]))
+      yl[2] <- yl[2]+1
+      g12 <-which(group==unique(group)[1])
+      g22 <- which(group==unique(group)[2])
+
+      plot(data[,index]~time2,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=ifelse(group==group[g12[1]],"blue","red"),pch=ifelse(group==group[g12[1]],16,17),...)
+      legend('topleft',legend=paste(unique(group),rep(c("Raw","Fitted","Mean"),each=2)),col=c('blue','red','black','brown','lightgrey','rosybrown'),lty=c(NA,NA,1,1,2,2),pch=c(16,17,NA,NA,NA,NA),ncol=3,cex=0.8,bty='n')
+      
+      ext1 <- tapply(data[,index][g12],time2[g12],function(x)mean(x,na.rm=T))
+      ext2 <- tapply(data[,index][g22],time2[g22],function(x)mean(x,na.rm=T))
+      ut1 <- unique(time2[g12])
+      ut2 <- unique(time2[g22])
+      lines(ext1~ut1, col='grey',lty=2)
+      lines(ext2~ut2, type='l',col='rosybrown',lty=2)
+    }else{
+      plot(0,0,type='n',ylim=range(model),xlim=range(time),main=name,xlab='Time',ylab='Intensity')
+      legend('topleft',legend=paste(c("G1","G2"),rep(c("Fitted"),each=2)),col=c('black','brown'),lty=c(1,1),cex=0.8,bty='n')
+      
+    }
+    if(smooth){
+      s1 <- spline(x = time[g1], y = model[g1], n = 500, method = "natural")
+      s2 <- spline(x = time[g2], y = model[g2], n = 500, method = "natural")
+      lines(s1$y~s1$x,type='l',col="black",lwd=2)
+      lines(s2$y~s2$x,type='l',col="brown",lwd=2)
+    }else{
+      lines(model[g1]~time[g1],col="black",lwd=2)
+      lines(model[g2]~time[g2],col="brown",lwd=2)
+    }
+    }else{
+    time <- as.numeric(as.character(s))
+    if(!missing(data) & !missing(time2)){
+      yl <- range(na.omit(data[,index]))
+      yl[2] <- yl[2]+1
+      plot(data[,index]~time2,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=
+            "blue",pch=16,...)
+      
+    }else{
+    plot(0,0,type='n',ylim=range(model),xlim=range(time),main=name,xlab='Time',ylab='Intensity')
+    legend('topleft',legend=paste("G1",rep(c("Fitted"),each=2)),col=c('black'),lty=c(1,1),cex=0.8,bty='n')
+    
+    }
+                       if(smooth){
+                         
+                         s1 <- spline(x = time, y = model, n = 500, method = "natural")
+                       
+                         lines(s1$y~s1$x,type='l',col="black",lwd=2)
+                        
+                       }else{
+                         lines(model~time,col="black",lwd=2)
+                        
+                       }
+                       
+  }
+                     
+
+  
+  
 }
