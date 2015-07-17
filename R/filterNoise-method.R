@@ -27,11 +27,11 @@
 #' @param propMissingCutoff \code{numeric} maximum proportion of missing values in trajectories.
 #' @param fcCutoff \code{numeric} the minimum fold change observed between the mean of any two time points. 
 #' @details
-#' filterNoise removes noisy or non-informative profiles based on selected theresholds R_I, R_T (Straube \emph{et al.} 2014), maximum foldchanges and/or missing values.
+#' filterNoise removes noisy or non-informative profiles based on selected theresholds R_I, R_T (Straube \emph{et al.} 2015), maximum foldchanges and/or missing values.
 #' @return filterNoise returns an object of class \code{list} containing the following components:
 #' \item{data}{\code{numeric} filtered data.}
 #' \item{removedIndices}{\code{numeric} removed indices}
-#' @references  Straube J., Gorse D., Huang B.E., Le Cao K.-A.(2014).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} Submitted
+#' @references  Straube J., Gorse A.-D., Huang B.E., Le Cao K.-A.(2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
 #' @seealso \code{\link{investNoise}}
 #' @examples 
 #' \dontrun{
@@ -45,6 +45,9 @@
 #'              
 #' #Alternatively model-based clustering can be used for filtering
 #' library(mclust)
+#' clusterFilter <- Mclust(cbind(noiseTest@@RT,noiseTest@@RI),G=2)
+#' plot(clusterFilter,what = "classification")
+#' meanRTCluster <-tapply(noiseTest@@RT,clusterFilter$classification,mean)
 #' bestCluster <- names(meanRTCluster[which.min(meanRTCluster)])
 #' filterdata <- kidneySimTimeGroup$data[G1,clusterFilter$classification==bestCluster]
 #'               
@@ -64,10 +67,7 @@ setMethod('filterNoise',c(data="matrixOrframe",noise="noise",RTCutoff="missingOr
   filter.Noise(data=data,noise=noise,RTCutoff=RTCutoff,RICutoff=RICutoff,propMissingCutoff=propMissingCutoff,fcCutoff=fcCutoff)
 })
 
-#library(mclust)
-#clusterFilter <- Mclust(cbind(noiseTest@RT,noiseTest@RI),G=2)
-#plot(clusterFilter,what = "classification")
-#meanRTCluster <-tapply(noiseTest@RT,clusterFilter$classification,mean)
+
 
 filter.Noise <- function(data,noise,RTCutoff,RICutoff,propMissingCutoff,fcCutoff){
     rows <- ncol(data)
@@ -77,7 +77,7 @@ filter.Noise <- function(data,noise,RTCutoff,RICutoff,propMissingCutoff,fcCutoff
     RTCutoff=0.9
     RICutoff=0.3
   
-    interIndex <- ((noise@RT<=RTCutoff & noise@RI<=RICutoff)|(noise@RT>RTCutoff & noise@RI>RICutoff))& justna
+    interIndex <- (noise@RT<=RTCutoff & noise@RI<=RICutoff)& justna
     
     l <- list(data=data[,interIndex],removedIndices=which(interIndex==F))
     return(l)

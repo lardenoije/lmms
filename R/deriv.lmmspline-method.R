@@ -37,7 +37,7 @@
 #' testLMMSplineTG<- lmmSpline(data=kidneySimTimeGroup$data[G1,],
 #'                   time=kidneySimTimeGroup$time[G1],
 #'                   sampleID=kidneySimTimeGroup$sampleID[G1],
-#'                   basis="p-spline")
+#'                   basis="p-spline",keepModels=T)
 #' testLMMSplineTGDeri <- deriv(testLMMSplineTG)
 #' summary(testLMMSplineTGDeri)}
 
@@ -45,6 +45,9 @@
 deriv.lmmspline <- function(expr, numCores, ...){
 
 models <- expr@models
+if(length(models)==0)
+  stop('You will need to keep the models to get the derivative information.')
+
 basis <- expr@basis
 if(missing(numCores)){
   num.Cores <- detectCores()
@@ -109,10 +112,16 @@ new.data <- parLapply(cl,1:length(models),fun = function(i){
   return(deri)
 })
 
+if(class(models[[1]])=="lme"){
+  time <- models[[1]]$data$time
+}else{
+  time <- models[[1]]$model$time
+}
+
 stopCluster(cl)
-deri <- as.data.frame(matrix(unlist(new.data),nrow=length(models),ncol=length(unique(expr@data$time)),byrow=T))
+deri <- as.data.frame(matrix(unlist(new.data),nrow=length(models),ncol=(length(unlist(new.data))/length(models)),byrow=T))
 rownames(deri) <- rownames(expr@predSpline)
-colnames(deri) <- unique(expr@data$time)
+colnames(deri) <- unique(sort(time))
 expr@predSpline <- deri
 expr@derivative <- TRUE
 return(expr)

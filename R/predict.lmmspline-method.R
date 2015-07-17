@@ -34,7 +34,7 @@
 #' G1 <- which(kidneySimTimeGroup$group=="G1")
 #' testLMMSpline<- lmmSpline(data=kidneySimTimeGroup$data[G1,],
 #'                  time=kidneySimTimeGroup$time[G1],
-#'                  sampleID=kidneySimTimeGroup$sampleID[G1])
+#'                  sampleID=kidneySimTimeGroup$sampleID[G1],keepModels=T)
 #' mat.predict <- predict(testLMMSpline, timePredict=c(seq(1,4, by=0.5)))}
 
 #' @export
@@ -43,16 +43,33 @@ predict.lmmspline<- function(object, timePredict, numCores, ...){
   if(missing(timePredict)){
     return(object@pred.spline)
   }else{
+  
+  
     
   models <- object@models
-  t <- na.omit(object@data$time)
-  if(min(timePredict)<min(t) | max(timePredict)>max(t))
-    stop(cat('Can only predict values within the time range',range(t)[1],'to',range(t)[2]))
+  
+  if(length(models)==0)
+    stop('You will need to keep the models to predict time points.')
+  cl <-sapply(models,class)
+  i <- which(cl=="lme")[1]
+  if(length(i)>0){
+  lme.model <- models[[i]]
+  t <- na.omit(lme.model$data$time)
   
   pred.spline <- rep(NA,length(timePredict))
   pred.df <- data.frame(all=rep(1,length(timePredict)), time=timePredict)
-  pred.df$Zt = approx.Z(object@data$Zt, object@data$time, timePredict)
+  pred.df$Zt = approx.Z(lme.model$data$Zt, lme.model$data$time, timePredict)
   
+  }else{
+    lme.model <- models[[i]]
+    i <- which(cl=="lm")[1]
+    t <- na.omit(lme.model$model$time)
+    pred.df <- data.frame(x=timePredict)
+  }
+  if(min(timePredict)<min(t) | max(timePredict)>max(t))
+    stop(cat('Can only predict values within the time range',range(t)[1],'to',range(t)[2]))
+  
+
   if(missing(numCores)){
     num.Cores <- detectCores()
   }else{

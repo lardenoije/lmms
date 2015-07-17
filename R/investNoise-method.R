@@ -21,6 +21,7 @@
 #' 
 #' @import parallel
 #' @import methods
+#' @importFrom stats sd
 #' @usage investNoise(data, time, sampleID, log, numCores)
 #' @param data \code{data.frame} or \code{matrix} containing the samples as rows and features as columns
 #' @param time \code{numeric} vector containing the sample time point information.
@@ -28,14 +29,14 @@
 #' @param log \code{logical} indicating log transformation of the data. Default value is TRUE
 #' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. Default value is automatically estimated.
 #' @details
-#' investNoise calculates filter ratios R_T and R_I based on the time, individual and overall standard deviation as proposed by Straube \emph{et al.}  2014. 
+#' investNoise calculates filter ratios R_T and R_I based on the time, individual and overall standard deviation as proposed by Straube \emph{et al.}  2015. 
 #' @return investNoise returns an object of class \code{noise} containing the following components:
 #' \item{name}{\code{character} the colnames or the index.}
 #' \item{RT}{\code{numeric} the time to molecule sd ratio of each trajectory.} 
 #' \item{RI}{\code{numeric} the individual to molecule sd ratio of each trajectory.}
 #' \item{propMissing}{\code{numeric} Proportion of missing values for each trajectory. }
-#' \item{fc}{\code{numeric} the maximum absolute fold change (either for log transformed data max(time)-min(time) or not log transformed data max(time)/min(time)) observed between the mean of any two time points. }
-#' @references  Straube J., Gorse D., Huang B.E., Le Cao K.-A.(2014).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} Submitted
+#' \item{foldChange}{\code{numeric} the maximum absolute fold change (either for log transformed data max(time)-min(time) or not log transformed data max(time)/min(time)) observed between the mean of any two time points. }
+#' @references  Straube J., Gorse D., Huang B.E., Le Cao K.-A. (2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
 #' @seealso \code{\link{summary.noise}}, \code{\link{plot.noise}}, \code{\link{filterNoise}}
 #' @examples 
 #' \dontrun{

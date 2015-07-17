@@ -19,12 +19,16 @@
 #' 
 #' Plots the raw data, the mean and the fitted or derivative information of the \code{lmmspline} object.
 #' 
-#' @import graphics
+#' @import ggplot2
+#' @importFrom stats spline na.omit
 #' @param x An object of class \code{lmmspline}.
 #' @param y \code{character} or \code{numeric} value. Determining which feature should be plotted can be either the index or the name of the feature. 
 #' @param smooth an optional \code{logical} value. Default \code{FALSE}, if \code{TRUE} smooth representation of the fitted values. 
+#' @param data alternative \code{matrix} or \code{data.frame} containing the original data for visualisation purposes.
+#' @param time alternative \code{numeric} indicating the sample time point. Vector of same length as row length of data for visualisation purposes.
+#' @param mean alternative \code{logical} if the mean should be displayed. By default set to \code{TRUE}.
 #' @param \ldots Additional arguments which are passed to \code{plot}.
-#' @return xyplot showing raw data, mean profile and fitted profile. 
+#' @return plot showing raw data, mean profile and fitted profile. 
 #' @examples 
 #' \dontrun{
 #' data(kidneySimTimeGroup)
@@ -32,18 +36,34 @@
 #' G1 <- which(kidneySimTimeGroup$group=="G1")
 #' testLmmspline <- lmmSpline(data=kidneySimTimeGroup$data[G1,],
 #'                  time=kidneySimTimeGroup$time[G1],
-#'                  sampleID=kidneySimTimeGroup$sampleID[G1])
+#'                  sampleID=kidneySimTimeGroup$sampleID[G1],keepModels=T)
+#'                  
+#'          
 #' plot(testLmmspline, y=2)
-#' plot(testLmmspline, y=2, smooth=TRUE)}
+#' plot(testLmmspline, y=2, smooth=TRUE)
+#' # Don't keep the models to improve memory usage 
+#' testLmmspline <- lmmSpline(data=kidneySimTimeGroup$data[G1,],
+#'                  time=kidneySimTimeGroup$time[G1],
+#'                  sampleID=kidneySimTimeGroup$sampleID[G1],keepModels=F)
+#'                  
+#' #plot only the fitted values
+#' plot(testLmmspline, y=2)
+#' #plot fitted values with original data
+#' plot(testLmmspline, y=2, data=kidneySimTimeGroup$data[G1,], time=kidneySimTimeGroup$time[G1])
+#' 
+#' }
 
 #' @method plot lmmspline
 #' @export
-plot.lmmspline <- function(x, y, smooth, ...){
+plot.lmmspline <- function(x, y, smooth, data,time,mean,...){
+  
   if(length(y)>1)
     stop('Can just plot a single feature.')
   name <- ""
+  
+  if(missing(smooth))
+    smooth <- F
   if(class(y)=='numeric'){
-    model <- x@models[[y]]
     name <- rownames(x@predSpline)[y]
   }
   if(class(y)=='character'){
@@ -51,107 +71,141 @@ plot.lmmspline <- function(x, y, smooth, ...){
     if(sum(nam%in%y)>0){
       name <- y
       y <- which(nam%in%y)
-      model <- x@models[[y]]
+     
    
     }else{
       stop(paste('Could not find feature',y,'in rownames(x@pred.spline).'))
     }
   }
+  if(length(x@models)>0){
+    model <- x@models[[y]]
   if(x@derivative){
-   plotLmmsDeriv(model, smooth=smooth,data=x@predSpline[y,],name,...) 
+    p <- plotLmmsDeriv(model, smooth=smooth,data=x@predSpline[y,],name,...) 
   }else{
-     plotLmms(model,smooth=smooth,name,...)
+     p <- plotLmms(model,smooth=smooth,name,mean,...)
   }
+  }else{
+    if(x@derivative){
+      p <- plotdataLMMS(t,x@predSpline[y,],smooth,name,data,time,y,mean,...)
+    }else{
+      t <- as.numeric(colnames(x@predSpline))
+      p <- plotdataLMMS(t,x@predSpline[y,],smooth,name,data,time,y,mean,...)
+  }
+}
+return(p)
+}
 
+plotdataLMMS <- function(x,y,smooth,name,data,time,mol,mean,...){
+  Time <- Intensity <- Model <- NULL
+  g <- ggplot()
+  if(missing(mean))
+    mean <- FALSE
+  if(missing(data)|missing(time)){  
+    if(smooth){
+      spl <- spline(x = x, y = unlist(y), n = 500, method = "natural")
+      s <- data.frame(Time=spl$x,Intensity=spl$y,Model="Smooth")
+    }else{    
+      s <- data.frame(Time = x,Intensity = unlist(y),Model="Fitted")
+    }
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+  }else{
+    s <- data.frame(Time = time,Intensity = data[,mol],Model="Mean")
+    g <- g+ geom_point(aes(x = Time,y=Intensity),data = s,size=0.5,na.rm = T)
+    if(mean)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=s,fun.y=function(x)mean(x), geom="line",na.rm = T)
+    if(smooth){      
+      spl <- spline(x = x, y = unlist(y), n = 500, method = "natural")
+      
+      s <- data.frame(Time = spl$x,Intensity = spl$y,Model="Smooth")
+    }else{
+      s <- data.frame(Time = x,Intensity=unlist(y),Model="Fitted")
+    }
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+  }
+  return(g)
 }
 
 
-plotLmms <- function(model,smooth,name,...){
-#library(graphics)
-
+plotLmms <- function(model,smooth,name,mean,...){
+  Time <- Intensity <- Model <- NULL
+  if(missing(mean))
+    mean <- F
   if(missing(smooth))
     smooth <- F
   cl <- class(model)
   p <- NULL
-
+  
   if(cl=="lm"){
-    yl <- range(na.omit(model$data$Expr))
-    yl[2] <- yl[2]+0.2
-    
-    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',main=name,pch=16,col="blue",ylim=yl,...)
-    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$data$time)
-     lines(ext~ut, type='l',col='grey',lty=2)
-    if(smooth){
-      s <- spline(x = model$data$time, y = fitted(model), n = 500, method = "natural")
 
+    dfmain <- data.frame(Intensity=model$model$Expr,Time=model$model$time,size=0.7,Model="Mean")
+    g <- ggplot() + geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    if(mean)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+     
+    if(smooth){ 
+      spl <- spline(x = model$model$time, y = fitted(model), n = 500, method = "natural")
+      s<- data.frame(Time=spl$x,Intensity=spl$y,Model="Smooth")
     }else{
-      s <- data.frame(y=fitted(model),x=model$data$time)
+      s <- data.frame(Intensity=fitted(model),Time=model$model$time,Model="Fitted")
     }
+    
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+    
   }
   
   if(cl=='lme'){
-    yl <- range(na.omit(model$data$Expr))
-    yl[2] <- yl[2]+0.2
+    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=0.7,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    if(mean)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
-    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',pch=16,col='blue',main=name,ylim=yl,...)
-    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$data$time)
    
     f <- fitted(model,level=1)
     if(smooth){
-      s <- spline(x = model$data$time, y = f, n = 500, method = "natural")
-     
+      spl <- spline(x = model$data$time, y = f, n = 500, method = "natural")
+      s <- data.frame(Time=spl$x,Intensity=spl$y,Model="Smooth")
     }else{
-      s <- data.frame(y=na.omit(f),x=model$data$time[!is.na(f)])
+      s <- data.frame(Intensity=na.omit(f),Time=model$data$time[!is.na(f)],Model="Fitted")
     }
   }
-  lines(ext~ut, col='grey',lty=2)
-  lines(s$y~s$x,col="black",lwd=2)
-  legend('topleft',legend=c("Raw","Fitted","Mean"),pch=c(16,NA,NA),lty=c(NA,1,2),col=c('blue','black','grey'),cex=0.8,bty='n',ncol=3)
-
-  
+  g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
+  return(g)
 }
 
 plotLmmsDeriv <- function(model,smooth,data,name,...){
-  #library(graphics)
-  
+  Time <- Intensity <- Model <- NULL
   if(missing(smooth))
     smooth <- F
   cl <- class(model)
-  p <- NULL
 
   if(cl=="lm"){
-    yl <- range(na.omit(unlist(c(model$data$Expr,data))))
-    yl[2] <- yl[2]+0.2
-    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,pch=16,col="blue",main=name,...)
-    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$data$time)
+    dfmain <- data.frame(Intensity=model$model$Expr,Time=model$model$time,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+
     if(smooth){
-      s <- spline(x = as.numeric(colnames(data)), y = data, n = 500, method = "natural")
+      spl <- spline(x =  as.numeric(colnames(data)), y = as.numeric(as.character(data)), n = 500, method = "natural")
+      s <- data.frame(Time=spl$x,Intensity=spl$y,Model="Smooth")
     }else{
-      s <- data.frame(y=as.numeric(as.character(data)),x=as.numeric(colnames(data)))
+      s <- data.frame(Time=as.numeric(colnames(data)),Intensity=as.numeric(as.character(data)),Model="Derivative")
     }
+    g <- g+geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
   }
   
   if(cl=='lme'){
-    yl <- range(na.omit(unlist(c(model$data$Expr,data))))
-    yl[2] <- yl[2]+0.2
-    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,pch=16,col="blue",main=name,...)
-    ext <- tapply(model$data$Expr,model$data$time,function(x)mean(x,na.rm=T))
-    ut <- unique(model$data$time)
+    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=0.7,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
-    f <- fitted(model,level=1)
     if(smooth){
-      s <- spline(x = as.numeric(colnames(data)), y = data, n = 500, method = "natural")
+      spl <- spline(x =as.numeric(colnames(data)), y = data, n = 500, method = "natural")
+      s <- data.frame(Time=spl$x,Intensity=spl$y,Model="Smooth")
     }else{
-      s <- data.frame(y=as.numeric(as.character(data)),x=as.numeric(colnames(data)))
+      s <- data.frame(Intensity=as.numeric(as.character(data)),Time=as.numeric(colnames(data)),Model="Derivative")
     }
-   
+    g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
   }
   
-  lines(ext~ut, type='l',col='grey',lty=2)
-  lines(s$y~s$x,type='l',col="black",lwd=2)
-  legend('topleft',legend=c("Raw","Deriv","Mean"),pch=c(16,NA,NA),lty=c(NA,1,2),col=c('blue','black','grey'),cex=0.8,bty='n',ncol=3)
+  return(g)
   
 }

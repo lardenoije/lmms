@@ -19,14 +19,17 @@
 #' 
 #' Plot of the raw data the mean and the fitted \code{lmmsde} profile.
 #' 
-#' @import graphics
+#' @import ggplot2
+#' @import gridExtra
+#' @importFrom  stats spline na.omit
 #' @param x An object of class \code{lmmsde}.
 #' @param y \code{numeric} or \code{character} value. Either the row index or the row name determining which feature should be plotted. 
 #' @param data alternative \code{matrix} or \code{data.frame} containing the original data for visualisation purposes.
 #' @param time alternative \code{numeric} indicating the sample time point. Vector of same length as row lenghth of data for visualisation purposes.
-#' @param group alternative \code{numeric} indicating the sample group. Vector of same length as row lenghth of data for visualisation purposes.
+#' @param group alternative \code{numeric} indicating the sample group. Vector of same length as row length of data for visualisation purposes.
 #' @param type a \code{character} indicating what model to plot. Default  \code{'all'}, options: \code{'time'}, \code{'group'},\code{'group*time'}.
-#' @param smooth an optional \code{logical} value.By default set to \code{FALSE}. If \code{TRUE} smooth representation of the fitted values. 
+#' @param smooth an optional \code{logical} value. By default set to \code{FALSE}. If \code{TRUE} smooth representation of the fitted values. 
+#' @param mean alternative \code{logical} if the mean should be displayed.  By default set to \code{TRUE}.
 #' @param \ldots Additional arguments which are passed to \code{plot}.
 #' @return plot showing raw data, mean profile and fitted profile. 
 #' @examples 
@@ -54,9 +57,10 @@
 
 #' @method plot lmmsde
 #' @export
-plot.lmmsde <- function(x, y, data, type, smooth,time,group, ...){
+plot.lmmsde <- function(x, y, data, time,group,type, smooth, mean,...){
  # library(graphics)
-  if(missing(type)){
+
+  if(missing(type)|sum(type%in%"all")>0){
     type <- c()
     if(length(x@modelGroup)>0|ncol(x@predGroup)>1)
       type <- c(type,'group')
@@ -65,55 +69,72 @@ plot.lmmsde <- function(x, y, data, type, smooth,time,group, ...){
     if(length(x@modelTimeGroup)>0|ncol(x@predTimeGroup)>1)
       type <- c(type,'group*time')
   }
-   
+   name <- y
   if(length(grep("all",type))>0){
     type <- c('time','group','group*time') 
   }
+  
   if(class(y)=='numeric')
-    name <- x@DE$Molecule[y]
+    name <- as.character(x@DE$Molecule[y])
     
-  if(class(y)=='character'){
-    nam <- x@DE$Molecule
-    if(sum(nam%in%y)>0){
-      name <- y
+  if(class(y)=='character'|class(y)=="factor"){
+    nam <- as.character(x@DE$Molecule)
+    if(sum(nam%in%as.character(y))>0){
+      name <- as.character(y)
       y <-which(nam%in%y)
     }else{
       stop(paste('Could not find feature',y,'in rownames(x@pred.spline).'))
     }
   }
-  if(length(type)==3)
-    par(mfrow=c(2,2))
+
+  if(missing(mean))
+    mean <- TRUE
   
   if(sum(type%in%'time')>0){
     name2 <- paste(name,'time')
     if(length(x@modelTime)>0){
-    plotLmms(x@modelTime[[y]],smooth=smooth,name2,...)
+     p1 <- plotLmms(x@modelTime[[y]],smooth=smooth,name2,mean,...)
+
     }else{
-      plotModel(x@predTime,y,smooth=smooth,name2,data=data,time2=time)
+      p1 <- plotModel(x@predTime,y,smooth=smooth,name2,data=data,time2=time,mean)
+    }
+    if(length(type)<3){
+      suppressWarnings(print(p1))
     }
   }
   if(sum(type%in%"group")>0){
    name2 <- paste(name,'group')
    if(length(x@modelGroup)>0){
-   plotLmmsdeFunc(x@modelGroup,index=y,smooth=smooth,name2,...)
+      p2 <- plotLmmsdeFunc(x@modelGroup,index=y,smooth=smooth,name2,mean,...)
    }else{
-     plotModel(x@predGroup,y,smooth=smooth,name2,data=data,time2=time,group=group)
+     p2 <- plotModel(x@predGroup,y,smooth=smooth,name2,data=data,time2=time,group=group,mean)
    }
+   
+   if(length(type)<3){
+     suppressWarnings(print(p2))
+   }
+   
   }
   if(sum(type%in%"group*time")>0){
     name2 <- paste(name,'group*time')
     if(length(x@modelTimeGroup)>0){
-    plotLmmsdeFunc(x@modelTimeGroup,index=y,smooth=smooth,name2,...)
+      p3 <- plotLmmsdeFunc(x@modelTimeGroup,index=y,smooth=smooth,name2,mean,...)
     } else{
-      plotModel(x@predTimeGroup,y,smooth=smooth,name2,data=data,time2=time,group=group)
+     p3 <- plotModel(x@predTimeGroup,y,smooth=smooth,name2,data=data,time2=time,group=group,mean)
+    }
+    if(length(type)<3){
+      suppressWarnings(print(p3))
     }
   }
-  par(mfrow=c(1,1))
-    
+  
+  if(length(type)==3|sum(type%in%"all")>0){
+  grid.arrange(p1, p2, p3, ncol=2)
+  }
   }
 
 
-plotLmmsdeFunc <- function(object,index,smooth,name,...){
+plotLmmsdeFunc <- function(object,index,smooth,name,mean,...){
+  Time <- Intensity <- Model <-Group<-  NULL
   if(missing(smooth))
     smooth <- F
   model <- object[[index]]
@@ -121,108 +142,107 @@ plotLmmsdeFunc <- function(object,index,smooth,name,...){
   if(is.null(model))
     stop("Requested model not available")
   cl <- class(model)
-  p <- NULL
-  yl <- range(na.omit(model$data$Expr))
-  yl[2] <- yl[2]+1
-
+    
     group <- model$data$Group
     g1 <-which(group==unique(group)[1])
     g2 <- which(group==unique(group)[2])
-    plot(model$data$Expr~model$data$time,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=ifelse(group==group[g1[1]],"blue","red"),pch=ifelse(group==group[g1[1]],16,17),...)
-    ext1 <- tapply(model$data$Expr[g1],model$data$time[g1],function(x)mean(x,na.rm=T))
-    ext2 <- tapply(model$data$Expr[g2],model$data$time[g2],function(x)mean(x,na.rm=T))
-    ut1 <- unique(model$data$time[g1])
-    ut2 <- unique(model$data$time[g2])
-    lines(ext1~ut1, col='grey',lty=2)
-    lines(ext2~ut2, type='l',col='rosybrown',lty=2)
+
+  g1Label <-sort(unique(group))[1]
+  g2Label <- sort(unique(group))[2]
   
+    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,Group=group,size=0.7,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity,shape=Group,color=Group,linetype=Model),data = dfmain,na.rm = T) 
+    if(mean)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,group=Group,colour=Group,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
     f <- fitted(model,level=1)
     f1 <- f[g1]
     f2<- f[g2]
   
+    dfmain <- data.frame(Intensity=f,Time=model$data$time,Group=group,size=0.7,Model="Fitted")
+  
+  
+  
     if(smooth){
-      s1 <- spline(x = model$data$time[g1], y = f1, n = 500, method = "natural")
-      s2 <- spline(x = model$data$time[g2], y = f2, n = 500, method = "natural")
-      lines(s1$y~s1$x,type='l',col="black",lwd=2)
-      lines(s2$y~s2$x,type='l',col="brown",lwd=2)
+      spl1 <- spline(x = model$data$time[g1], y = f1, n = 500, method = "natural")
+      s1 <- data.frame(Time=spl1$x,Intensity=spl1$y,Model="Smooth",Group=g1Label)
+      spl2 <- spline(x = model$data$time[g2], y = f2, n = 500, method = "natural")
+      s2 <- data.frame(Time=spl2$x,Intensity=spl2$y,Model="Smooth",Group=g2Label)
     }else{
-      lines(na.omit(f1)~model$data$time[intersect(which(!is.na(f)),g1)],col="black",lwd=2)
-      lines(na.omit(f2)~model$data$time[intersect(which(!is.na(f)),g2)],col="brown",lwd=2)
+      s1 <- data.frame(Intensity=na.omit(f1),Time=model$data$time[intersect(which(!is.na(f)),g1)],Model="Fitted",Group=g1Label)
+      s2 <- data.frame(Intensity=na.omit(f2),Time=model$data$time[intersect(which(!is.na(f)),g2)],Model="Fitted",Group=g2Label)
     }
- 
-    legend('topleft',legend=paste(group[c(g1[1],g2[1])],rep(c("Raw","Fitted","Mean"),each=2)),col=c('blue','red','black','brown','lightgrey','rosybrown'),lty=c(NA,NA,1,1,2,2),pch=c(16,17,NA,NA,NA,NA),ncol=3,cex=0.8,bty='n')
-}
+    g <- g+ geom_line(aes(x = Time,y=Intensity,color=Group,linetype=Model),data = s1,size=0.5)+ geom_line(aes(x = Time,y=Intensity,color=Group,linetype=Model),size=0.5,data = s2)
+  
+  return(g)
+ }
 
-plotModel <- function(object,index,smooth,name,data,time2,group,...){
+plotModel <- function(object,index,smooth,name,data,time2,group,mean,...){  
+  Time <- Intensity <- Model <- Group<- NULL
   if(missing(smooth))
     smooth <- F
-  model <- object[index,]
 
+  model <- object[index,]
+  time <- suppressWarnings(as.numeric(names(model)))
+
+  #if(missing(group))
+  #  group <- rep(1,length(time))
+ 
   s <- strsplit(colnames(object),split = " ")
   s <- sapply(s,'[')
-
-  if(!is.null(dim(s))){
-    time <- as.numeric(as.character(s[2,]))
+  if(!is.null(dim(s)) & !is.null(s)){
+        group2 <- s[1,]
+        time <-  suppressWarnings(as.numeric(s[2,]))
+    g1Label <-sort(unique(group))[1]
+    g2Label <- sort(unique(group))[2]
     
-    g1 <- which(s[1,]==(unique(s[1,])[1]))
-    g2 <- which(s[1,]==(unique(s[1,])[2]))
+    g1 <- which(group2==unique(group)[1])
+    g2 <- which(group2==unique(group2)[2])
+    group2[g1] <- unique(group)[1]
+    group2[g2] <- unique(group)[2]
+    
     if(!missing(data) & !missing(time2) & !missing(group)){
-      yl <- range(na.omit(data[,index]))
-      yl[2] <- yl[2]+1
-      g12 <-which(group==unique(group)[1])
-      g22 <- which(group==unique(group)[2])
-
-      plot(data[,index]~time2,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=ifelse(group==group[g12[1]],"blue","red"),pch=ifelse(group==group[g12[1]],16,17),...)
-      legend('topleft',legend=paste(unique(group),rep(c("Raw","Fitted","Mean"),each=2)),col=c('blue','red','black','brown','lightgrey','rosybrown'),lty=c(NA,NA,1,1,2,2),pch=c(16,17,NA,NA,NA,NA),ncol=3,cex=0.8,bty='n')
-      
-      ext1 <- tapply(data[,index][g12],time2[g12],function(x)mean(x,na.rm=T))
-      ext2 <- tapply(data[,index][g22],time2[g22],function(x)mean(x,na.rm=T))
-      ut1 <- unique(time2[g12])
-      ut2 <- unique(time2[g22])
-      lines(ext1~ut1, col='grey',lty=2)
-      lines(ext2~ut2, type='l',col='rosybrown',lty=2)
+      dfmain <- data.frame(Intensity=data[,index],Time=time2,Group=factor(group),size=0.7,Model="Mean")
+      g <- ggplot()+ geom_point(aes(x=Time,y=Intensity,shape=Group,color=Group),data = dfmain,na.rm = T) 
+      if(mean)
+        g <- g + stat_summary(aes(x=Time,y=Intensity,group=Group,colour=Group,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
     }else{
-      plot(0,0,type='n',ylim=range(model),xlim=range(time),main=name,xlab='Time',ylab='Intensity')
-      legend('topleft',legend=paste(c("G1","G2"),rep(c("Fitted"),each=2)),col=c('black','brown'),lty=c(1,1),cex=0.8,bty='n')
-      
+      dfmain <- data.frame(Intensity=model,Time=time,Group=factor(group2),size=0.7,Model="Mean")
+      g <- ggplot()+ geom_point(aes(x=Time,y=Intensity,shape=Group,color=Group),data = dfmain,na.rm = T) 
     }
     if(smooth){
-      s1 <- spline(x = time[g1], y = model[g1], n = 500, method = "natural")
-      s2 <- spline(x = time[g2], y = model[g2], n = 500, method = "natural")
-      lines(s1$y~s1$x,type='l',col="black",lwd=2)
-      lines(s2$y~s2$x,type='l',col="brown",lwd=2)
-    }else{
-      lines(model[g1]~time[g1],col="black",lwd=2)
-      lines(model[g2]~time[g2],col="brown",lwd=2)
-    }
-    }else{
-    time <- as.numeric(as.character(s))
-    if(!missing(data) & !missing(time2)){
-      yl <- range(na.omit(data[,index]))
-      yl[2] <- yl[2]+1
-      plot(data[,index]~time2,xlab='Time',ylab='Intensity',ylim=yl,main=name,col=
-            "blue",pch=16,...)
+      spl1 <- as.data.frame(spline(x = time[g1], y = model[g1], n = 500, method = "natural"))
+      s1 <- data.frame(Time=spl1$x,Intensity=spl1$y,Model="Smooth",Group=g1Label)
       
+      spl2 <- as.data.frame(spline(x = time[g2], y = model[g2], n = 500, method = "natural"))
+      s2 <- data.frame(Time=spl2$x,Intensity=spl2$y,Model="Smooth",Group=g2Label)
+     
     }else{
-    plot(0,0,type='n',ylim=range(model),xlim=range(time),main=name,xlab='Time',ylab='Intensity')
-    legend('topleft',legend=paste("G1",rep(c("Fitted"),each=2)),col=c('black'),lty=c(1,1),cex=0.8,bty='n')
-    
+      s1 <- data.frame(Time = time[g1], Intensity = model[g1],Model="Fitted",Group=g1Label)
+      s2 <- data.frame(Time = time[g2], Intensity = model[g2],Model="Fitted",Group=g2Label)
     }
-                       if(smooth){
-                         
-                         s1 <- spline(x = time, y = model, n = 500, method = "natural")
-                       
-                         lines(s1$y~s1$x,type='l',col="black",lwd=2)
-                        
-                       }else{
-                         lines(model~time,col="black",lwd=2)
-                        
-                       }
-                       
+    g <- g+ geom_line(aes(x = Time,y=Intensity,color=Group,linetype=Model),data = s1,size=0.5)+ geom_line(aes(x = Time,y=Intensity,color=Group,linetype=Model),data = s2,size=0.5)    
+     
+    }else{
+   # time <- as.numeric(as.character(s))
+    if(!missing(data) & !missing(time2)){
+      dfmain <- data.frame(Intensity=data[,index],Time=time2)
+    }else{
+      dfmain <- data.frame(Intensity=model,Time=time)    
+    }
+    
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    
+    if(smooth){
+      sp1 <- as.data.frame(spline(x = time, y = model, n = 500, method = "natural"))
+      dfModel <- data.frame(Intensity=sp1$y,Time=sp1$x,Model="Smooth")                        
+    }else{
+      dfModel <- data.frame(Intensity=model,Time=time,Model="Fitted")
+    }
+     g<-g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data =dfModel,size=0.1)
   }
                      
+  return(g)
+  
 
-  
-  
 }

@@ -41,9 +41,28 @@ summary.lmmsde <-function(object, ...){
             print(object@knots)
             cat(' \n ')
             cat('Table of number of differential expressed molecules after correction for multiple testing and adj.p <=0.05.\n')
-            print( apply(object@DE[,c(3,5,7)],2,function(x)sum(na.omit(x<0.05))))
-            cat(' \n ')
+            if(di[2]>3){
+              print( apply(object@DE[,seq(3,di[2],by=2)],2,function(x)sum(na.omit(x<0.05))))
+              cat(' \n ')
+              cat('Table of models used to model profiles: ')
+              cat(' \n ')
+              cat('Time: \n ')
+              print(table(object@modelsUsed[,1]))
+              cat(' \n ')
+              cat('Group: \n ')
+              print(table(object@modelsUsed[,2]))
+              cat(' \n ')
+              cat('Group*Time:')
+              print(table(object@modelsUsed[,3]))
+
+            }else{
+              print(sum(na.omit(object@DE[,di]<0.05)))
+              cat('Table of models used to model profiles: ')
+              cat(' \n ')
+              cat(paste(colnames(object@DE)[2],': \n '))
+              print(table(object@modelsUsed))
+            }
             cat('Profiles not modelled: \n')
             print(object@errorMolecules)
-          }
 
+          }
