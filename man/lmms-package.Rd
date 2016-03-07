@@ -1,5 +1,5 @@
 \name{lmms-package}
-\Rdversion{1.1}
+\Rdversion{1.3.3}
 \alias{lmms-package}
 \alias{lmms}
 \docType{package}
@@ -13,8 +13,8 @@ The package provides quality control and filtering methods as well as linear mix
 \tabular{ll}{
 Package: \tab lmms\cr
 Type: \tab Package\cr
-Version: \tab 1.14\cr
-Date: \tab 2014-05-08\cr
+Version: \tab 1.3.3\cr
+Date: \tab 2016-03-04\cr
 License: \tab GPL-2 \cr
 LazyLoad: \tab yes\cr
 }

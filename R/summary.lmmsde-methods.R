@@ -62,7 +62,5 @@ summary.lmmsde <-function(object, ...){
               cat(paste(colnames(object@DE)[2],': \n '))
               print(table(object@modelsUsed))
             }
-            cat('Profiles not modelled: \n')
-            print(object@errorMolecules)
 
           }

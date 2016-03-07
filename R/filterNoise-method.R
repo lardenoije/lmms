@@ -31,7 +31,7 @@
 #' @return filterNoise returns an object of class \code{list} containing the following components:
 #' \item{data}{\code{numeric} filtered data.}
 #' \item{removedIndices}{\code{numeric} removed indices}
-#' @references  Straube J., Gorse A.-D., Huang B.E., Le Cao K.-A.(2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
+#' @references  Straube J., Gorse A.-D., Huang B.E., Le Cao K.-A. (2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE, 10(8), e0134540.
 #' @seealso \code{\link{investNoise}}
 #' @examples 
 #' \dontrun{

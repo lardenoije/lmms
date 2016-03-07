@@ -20,12 +20,12 @@
 #' 
 #' Function to fit a linear mixed effect model splines to perform differential expression analysis. The \code{\link{lmmsDE}} function fits LMM models with either a \code{cubic}, \code{p-spline} or \code{cubic p-spline} basis and compares the models to the null models. The type of basis to use is specified with the \code{basis} argument.
 #' 
-#' @import nlme
-#' @import lmeSplines
-#' @import gdata
-#' @import reshape2
-#' @import parallel
-#' @import methods
+#' @import methods 
+#' @importFrom nlme lme lmeControl pdIdent pdDiag
+#' @importFrom parallel parLapply detectCores makeCluster clusterExport stopCluster
+#' @importFrom gdata drop.levels
+#' @importFrom lmeSplines smspline 
+#' @importFrom reshape2 melt dcast
 #' @importFrom  stats na.omit anova quantile fitted na.exclude predict predict.lm lm p.adjust
 #' @usage lmmsDE(data, time, sampleID, group, type,
 #' experiment, basis, knots,keepModels, numCores)
@@ -56,7 +56,7 @@
 #' @references  Durban, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005). \emph{Simple fitting of subject-specific curves for longitudinal data.} Stat. Med., 24(8), 1153-67.
 #' @references  Ruppert, D. (2002). \emph{Selecting the number of knots for penalized splines.} J. Comp. Graph. Stat. 11, 735-757
 #' @references  Verbyla, A. P., Cullis, B. R., & Kenward, M. G. (1999). \emph{The analysis of designed experiments and longitudinal data by using smoothing splines.} Appl.Statist, 18(3), 269-311.
-#' @references  Straube J., Gorse A.-D., Huang B.E., & Le Cao K.-A. (2015). \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
+#' @references  Straube J., Gorse A.-D., Huang B.E., & Le Cao K.-A. (2015). \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE, 10(8), e0134540.
 
 #' @seealso \code{\link{summary.lmmsde}}, \code{\link{plot.lmmsde}}
 #' @examples 
@@ -65,8 +65,7 @@
 #' lmmsDEtest <-lmmsDE(data=kidneySimTimeGroup$data,time=kidneySimTimeGroup$time,
 #'               sampleID=kidneySimTimeGroup$sampleID,group=kidneySimTimeGroup$group)
 #' summary(lmmsDEtest)}
-#' @docType methods
-#' @rdname lmmsDE-methods
+
 # @export
 #setGeneric('lmmsDE',function(data,time,sampleID,group,type,experiment,basis,knots,keepModels,numCores){standardGeneric('lmmsDE')})
 #setClassUnion("missingOrnumeric", c("missing", "numeric"))
@@ -89,6 +88,8 @@
 #  lmmsDEPara(data=data,time=time,sampleID=sampleID,group=group,type=type,experiment=experiment,basis=basis,keepModels=keepModels,numCores=numCores)
 #})
 # @method lmmsDE data.frame
+#' @docType methods
+#' @rdname lmmsDE-methods
 #' @export
 lmmsDE <- function(data, time, sampleID, group, type,experiment,basis,knots,keepModels,numCores){
 
@@ -167,10 +168,7 @@ lmmsDE <- function(data, time, sampleID, group, type,experiment,basis,knots,keep
     }
     
   }
-  lme <- nlme::lme
   cl <- makeCluster(num.Cores,"SOCK")
-  
-  
   pred.time <- NA
   pred.time.group <- NA
   pred.group <- NA
@@ -182,7 +180,7 @@ lmmsDE <- function(data, time, sampleID, group, type,experiment,basis,knots,keep
   fitsdf <- matrix(NA,ncol=3,nrow=nMolecules)
   
   colnames(fitsdf) <- c("Time","Group","Group_Time")
-  clusterExport(cl, list('lme','sampleID','time','group','data','gsub','try','outer','pdDiag','melt','dcast','knots','basis','smspline','drop.levels','anova','type','pvals','keepModels','lmeControl','nlme','pdIdent','other.reshape.group'),envir=environment())
+  clusterExport(cl, list('lme','sampleID','time','group','data','gsub','try','outer','pdDiag','melt','dcast','knots','basis','smspline','drop.levels','anova','type','pvals','keepModels','lmeControl','pdIdent','other.reshape.group'),envir=environment())
   
   #for(i in 1:nMolecules){
   new.data <- parLapply(cl,1:nMolecules,fun = function(i){
@@ -605,7 +603,7 @@ lmmsDE <- function(data, time, sampleID, group, type,experiment,basis,knots,keep
     
   })
   
-  
+  stopCluster(cl)
   new.df <- matrix(sapply(new.data,'[[','pvals'),nrow=nMolecules,ncol=3,byrow=T)
   knots <- unique(as.vector((sapply(new.data,'[[','knots'))))
   fits <- matrix(sapply(new.data,'[[','fits'),nrow=nMolecules,ncol=3,byrow=T)

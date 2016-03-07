@@ -60,11 +60,11 @@ if(!is.na(propMissingCutoff)){
   }
 }
 index <- indexFC & indexMissing
-q <-qplot(x@RT[index],x@RI[index], col=color,xlab=expression(R[T]),ylab=expression(R[I]))
+q <-qplot(x@RT[index],x@RI[index], col=color,xlab=expression(R[T]),ylab=expression(R[I])) + geom_point(alpha=0.5,size=3)
 if(colorBy=="propMissing"){
   color <- x@propMissing[index]
   main = "Proportion of\nmissing\nvalues"
-  q<-q +scale_colour_gradientn(limits=c(0,1),colours=c("#1b9e77","#d95f02","#7570b3"),name=main,breaks=seq(0,1, length.out = 5),labels=format(seq(0,1, length.out = 5)))  + theme(panel.background = element_rect(fill = 'white', colour = 'white'))
+  q<-q +scale_colour_gradientn(limits=c(0,1),colours=c("#1b9e77","#d95f02","#7570b3"),name=main,breaks=seq(0,1, length.out = 5),labels=format(seq(0,1, length.out = 5)))  + theme_bw()
 }else if(colorBy=="fc"){
   color <- x@foldChange[index]
   main = "Fold\nChange"
@@ -77,7 +77,7 @@ if(colorBy=="propMissing"){
     col <-c("red","black","green")
   }
   rangeC <- c(mc,seq(0,maxC,length.out = 3))
-  q <- q+scale_colour_gradientn(colours=col,name=main,breaks=rangeC,labels=format(signif(rangeC,2)))  + theme(panel.background = element_rect(fill = 'white', colour = 'white'))
+  q <- q+scale_colour_gradientn(colours=col,name=main,breaks=rangeC,labels=format(signif(rangeC,2)))  + theme_bw()
 }else{
   stop("Can not identify type of colorBy choose options: 'fc'or 'propMissing' ")
 }

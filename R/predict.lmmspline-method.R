@@ -20,9 +20,8 @@
 #' 
 #' Predicts the fitted values of an \code{lmmspline} object for time points of interest.
 #' 
-#' @import parallel
-#' @import nlme
-#' @import lmeSplines
+#' @importFrom parallel parLapply
+#' @importFrom lmeSplines approx.Z
 #' @param object an object inheriting from class \code{lmmspline}.
 #' @param timePredict an optional \code{numeric} vector. Vector of time points to predict fitted values. If \code{missing} uses design points. 
 #' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. By default estimated automatically.

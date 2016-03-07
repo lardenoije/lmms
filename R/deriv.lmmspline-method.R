@@ -19,10 +19,8 @@
 #' 
 #' Calculates the derivative information for \code{lmmspline} objects with a \code{"p-spline"} or \code{"cubic p-spline"} basis.
 #' 
-#' @import parallel 
 #' @importFrom stats deriv
 #' @param expr An object of class \code{lmmspline}.
-#' @param numCores alternative \code{numeric} value indicating the number of CPU cores to be used for parallelization. Default value is automatically estimated.
 #' @param ... Additional arguments which are passed to \code{deriv}.
 #' @return deriv returns an object of class \code{lmmspline} containing the following components:
 #' \item{predSpline}{ \code{data.frame} containing the predicted derivative values based on the linear model object or the linear mixed effect model object.}
@@ -42,24 +40,14 @@
 #' summary(testLMMSplineTGDeri)}
 
 #' @export
-deriv.lmmspline <- function(expr, numCores, ...){
+deriv.lmmspline <- function(expr, ...){
 
 models <- expr@models
 if(length(models)==0)
   stop('You will need to keep the models to get the derivative information.')
 
 basis <- expr@basis
-if(missing(numCores)){
-  num.Cores <- detectCores()
-}else{
-  num.Cores <- detectCores()
-  if(num.Cores<numCores){
-    warning(paste('The number of cores is bigger than the number of detected cores. Using the number of detected cores',num.Cores,'instead.'))
-  }else{
-    num.Cores <- numCores
-  }
-  
-}
+
 
 if(sum(expr@basis%in%c('p-spline','cubic p-spline'))==0)
   stop('Objects must be modelled with p-spline or cubic p-spline basis.')
@@ -100,11 +88,9 @@ derivLmeCubic <- function(fit){
   
 }
 
-cl <- makeCluster(num.Cores,"SOCK")
-deri <- NULL
-clusterExport(cl, list('models','basis','deri','derivLme','derivLmeCubic'),envir=environment())
 
-new.data <- parLapply(cl,1:length(models),fun = function(i){
+deri <- NULL
+new.data <- lapply(1:length(models),function(i){
   if(basis=='p-spline')
     deri <- derivLme(models[[i]])
   if(basis=='cubic p-spline')
@@ -118,7 +104,7 @@ if(class(models[[1]])=="lme"){
   time <- models[[1]]$model$time
 }
 
-stopCluster(cl)
+
 deri <- as.data.frame(matrix(unlist(new.data),nrow=length(models),ncol=(length(unlist(new.data))/length(models)),byrow=T))
 rownames(deri) <- rownames(expr@predSpline)
 colnames(deri) <- unique(sort(time))

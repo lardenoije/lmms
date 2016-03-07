@@ -21,12 +21,13 @@
 #' 
 #' Function that models a linear or limear mixed model depending on the best fit. Alternatively, the function can return THE derivation information of the fitted models
 #' for the fixed (original) times points and a chosen \code{basis}.
-#' @import nlme
-#' @import lmeSplines
-#' @import gdata
-#' @import reshape2
-#' @import parallel
-#' @import methods
+#' 
+#' @import methods 
+#' @importFrom nlme lme lmeControl pdIdent pdDiag
+#' @importFrom parallel parLapply detectCores makeCluster clusterExport stopCluster
+#' @importFrom gdata drop.levels
+#' @importFrom lmeSplines smspline approx.Z
+#' @importFrom reshape2 melt dcast
 #' @importFrom stats lm predict.lm predict anova quantile na.exclude
 #' @usage lmmSpline(data, time, sampleID, timePredict, deri, basis, knots, keepModels,numCores)
 #' @param data \code{data.frame} or \code{matrix} containing the samples as rows and features as columns
@@ -75,15 +76,16 @@
 #' with \eqn{\epsilon_{ij} ~ N(0,\sigma_\epsilon^2)} and \eqn{(a_{i0},a_{i1})^T} ~ \eqn{ N(0,\Sigma).}
 #' We assume independence between the random intercept and slope.
 #'  @return lmmSpline returns an object of class \code{lmmspline} containing the following components:
+#'  \itemize{
 #' \item{predSpline}{\code{data.frame} containing predicted values based on linear model object or linear mixed effect model object.}
 #' \item{modelsUsed}{\code{numeric} vector indicating the model used to fit the data. 0 = linear model, 1=linear mixed effect model spline (LMMS) with defined basis ('cubic' by default) 2 = LMMS taking subject-specific random intercept, 3 = LMMS with subject specific intercept and slope.}
 #' \item{model}{\code{list} of models used to model time profiles.}
 #' \item{derivative}{\code{logical} value indicating if the predicted values are the derivative information.}
+#'  }
 #' @references  Durban, M., Harezlak, J., Wand, M. P., & Carroll, R. J. (2005). \emph{Simple fitting of subject-specific curves for longitudinal data.} Stat. Med., 24(8), 1153-67.
 #' @references  Ruppert, D. (2002). \emph{Selecting the number of knots for penalized splines.} J. Comp. Graph. Stat. 11, 735-757
 #' @references  Verbyla, A. P., Cullis, B. R., & Kenward, M. G. (1999). \emph{The analysis of designed experiments and longitudinal data by using smoothing splines.} Appl.Statist, 18(3), 269-311.
-#' @references  Straube J., Gorse A.-D., Huang B.E., Le Cao K.-A.(2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
-
+#' @references  Straube J., Gorse A.-D., Huang B.E., Le Cao K.-A. (2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE, 10(8), e0134540.
 #' @seealso \code{\link{summary.lmmspline}}, \code{\link{plot.lmmspline}}, \code{\link{predict.lmmspline}}, \code{\link{deriv.lmmspline}}
 #' @examples 
 #' \dontrun{
@@ -97,28 +99,27 @@
 #'                        time=kidneySimTimeGroup$time[G1],sampleID=kidneySimTimeGroup$sampleID[G1],
 #'                        deri=TRUE,basis="p-spline")
 #' summary(DerivTestLMMSplineTG)}
+# setGeneric('lmmSpline',function(data,time,sampleID,timePredict,deri,basis,knots,keepModels,numCores){standardGeneric('lmmSpline')})
+# setClassUnion("matrixOrFrame",c('matrix','data.frame'))
+# setClassUnion("missingOrnumeric", c("missing", "numeric"))
+# setClassUnion("missingOrcharacter", c("missing", "character"))
+# setClassUnion("missingOrlogical", c("missing", "logical"))
+# setClassUnion("factorOrcharacterOrnumeric", c("factor", "character","numeric"))
+# # @rdname lmmSpline-methods
+# # @aliases lmmSpline,matrixOrFrame,numeric,factorOrcharacterOrnumeric,
+# # missingOrlogical,missingOrcharacter,missingOrnumeric,missingOrlogical,missingOrnumeric-method
+# # @exportMethod lmmSpline
+# 
+# setMethod('lmmSpline',c(data="matrixOrFrame",time="numeric",sampleID="factorOrcharacterOrnumeric",timePredict="missingOrnumeric", deri="missingOrlogical", basis="missingOrcharacter",knots="missingOrnumeric",keepModels="missingOrlogical",numCores="missingOrnumeric"), function(data,time,sampleID,timePredict,deri,basis,knots,keepModels,numCores){
+#   
+#    lmmSplinePara(data=data,time=time,sampleID=sampleID,timePredict=timePredict,deri=deri,basis=basis, knots=knots,keepModels=keepModels,numCores=numCores)
+# })
+# @name lmmSpline
+
 #' @docType methods
-#' @name lmmSpline
 #' @rdname lmmSpline-methods
 #' @export
-setGeneric('lmmSpline',function(data,time,sampleID,timePredict,deri,basis,knots,keepModels,numCores){standardGeneric('lmmSpline')})
-setClassUnion("matrixOrFrame",c('matrix','data.frame'))
-setClassUnion("missingOrnumeric", c("missing", "numeric"))
-setClassUnion("missingOrcharacter", c("missing", "character"))
-setClassUnion("missingOrlogical", c("missing", "logical"))
-setClassUnion("factorOrcharacterOrnumeric", c("factor", "character","numeric"))
-#' @rdname lmmSpline-methods
-#' @aliases lmmSpline,matrixOrFrame,numeric,factorOrcharacterOrnumeric,
-#' missingOrlogical,missingOrcharacter,missingOrnumeric,missingOrlogical,missingOrnumeric-method
-#' @exportMethod lmmSpline
-
-setMethod('lmmSpline',c(data="matrixOrFrame",time="numeric",sampleID="factorOrcharacterOrnumeric",timePredict="missingOrnumeric", deri="missingOrlogical", basis="missingOrcharacter",knots="missingOrnumeric",keepModels="missingOrlogical",numCores="missingOrnumeric"), function(data,time,sampleID,timePredict,deri,basis,knots,keepModels,numCores){
-  
-   lmmSplinePara(data=data,time=time,sampleID=sampleID,timePredict=timePredict,deri=deri,basis=basis, knots=knots,keepModels=keepModels,numCores=numCores)
-})
-
-
-lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,keepModels, numCores){
+lmmSpline <- function(data, time, sampleID, timePredict, deri, basis, knots,keepModels, numCores){
 
   if(missing(keepModels))
     keepModels <- F
@@ -132,7 +133,7 @@ lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,
   }else{
     deri <- deri
   }
-  
+ 
   basis.collection <-  c("cubic","p-spline","cubic p-spline")
   if(!basis%in% basis.collection)
     stop(cat("Chosen basis is not available. Choose:", paste(basis.collection,collapse=', ')))
@@ -205,12 +206,12 @@ lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,
   
   lme <- nlme::lme
   cl <- makeCluster(num.Cores,"SOCK")
-  clusterExport(cl, list('data','lm','try','class','unique','anova','drop.levels','pdDiag','time','sampleID','melt','dcast','predict','derivLme','knots','derivLmeCubic','lme','keepModels','basis','data','other.reshape'),envir=environment())
+  clusterExport(cl, list('data','lm','try','class','unique','anova','drop.levels','pdDiag','pdIdent','time','sampleID','melt','dcast','predict','derivLme','knots','derivLmeCubic','lme','keepModels','basis','data','other.reshape'),envir=environment())
+
   models <-list()
 
   
   new.data <- parLapply(cl,1:nMolecules,fun = function(i){
-    
     expr <- data[,i]
     
     dataM <- as.data.frame(other.reshape(Rep=sampleID,Time=time,Data=unlist(expr)))
@@ -258,11 +259,13 @@ lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,
     
     #library(nlme)
     fit0 <- NULL
-    
     fit0  <- try(lm(Expr ~ time, data=dataM ))
-    if(class(fit0) == 'try-error') { 
-      error <- c(error,i)
-    }
+    if(class(fit0) == 'try-error') {
+      models <- list()
+      error <- i
+      pred.spline <- rep(NA,length(timePredict))
+      fits <- NA
+    }else{
     fit1 <- NULL
     fit1 <- try(lme(Expr ~ time, data=dataM, random=list(all=pdIdent(~Zt - 1)),
                     na.action=na.exclude, control=lmeControl(opt = "optim"))) 
@@ -347,9 +350,10 @@ lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,
         pred.spline = predict(fit0, newdata=pred.df, level=1, na.action=na.exclude)
       }
     }
-    
+    }
     if(!keepModels)
       keepModels <- list()
+    
     return(list(pred.spl=pred.spline,fit=fits,models=models,error=error,knots=knots))
     
 })
@@ -377,10 +381,9 @@ lmmSplinePara <- function(data, time, sampleID, timePredict, deri, basis, knots,
     colnames(pred.spl) <- timePredict
   error2 <- "All features were modelled"
   if(length(error)>0){
-    warning('The following features could not be fitted',paste(MolNames[error],' ',sep='\n'))
-    error2 <- c()
-    error2 <- rownames(pred.spline)[error]
-    pred.spline <- pred.spline[-error,]
+    warning('The following features could not be fitted ',paste(MolNames[error],' ',sep='\n'))
+    error2 <- ''
+    error2 <- MolNames[error]
     
   }
 

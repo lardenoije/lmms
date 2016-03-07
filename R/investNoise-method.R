@@ -18,8 +18,7 @@
 #' 
 #' Function to calculate filter ratios of trajectories.
 #' 
-#' 
-#' @import parallel
+#' @importFrom parallel parLapply detectCores makeCluster clusterExport stopCluster
 #' @import methods
 #' @importFrom stats sd
 #' @usage investNoise(data, time, sampleID, log, numCores)
@@ -36,7 +35,7 @@
 #' \item{RI}{\code{numeric} the individual to molecule sd ratio of each trajectory.}
 #' \item{propMissing}{\code{numeric} Proportion of missing values for each trajectory. }
 #' \item{foldChange}{\code{numeric} the maximum absolute fold change (either for log transformed data max(time)-min(time) or not log transformed data max(time)/min(time)) observed between the mean of any two time points. }
-#' @references  Straube J., Gorse D., Huang B.E., Le Cao K.-A. (2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE (accepted)
+#' @references  Straube J., Gorse D., Huang B.E., Le Cao K.-A. (2015).  \emph{A linear mixed model spline framework for analyzing time course 'omics' data} PLOSONE, 10(8), e0134540.
 #' @seealso \code{\link{summary.noise}}, \code{\link{plot.noise}}, \code{\link{filterNoise}}
 #' @examples 
 #' \dontrun{
@@ -46,23 +45,25 @@
 #'             sampleID=kidneySimTimeGroup$sampleID[G1])
 #' summary(noiseTest)
 #' plot(noiseTest,colorBy="propMissing")}
+# @docType methods
+# @rdname investNoise-methods
+# @export
+# setGeneric('investNoise',function(data,time,sampleID,log,numCores){standardGeneric('investNoise')})
+# setClassUnion("missingOrnumeric", c("missing", "numeric"))
+# setClassUnion("missingOrlogical", c("missing", "logical"))
+# setClassUnion("factorOrcharacterOrnumeric", c( "factor","character","numeric"))
+# setClassUnion("matrixOrframe",c('matrix','data.frame'))
+# # @rdname investNoise-methods
+# # @aliases investNoise,matrixOrframe,numeric,factorOrcharacterOrnumeric,missingOrnumeric-method
+# # @exportMethod investNoise
+# 
+# setMethod('investNoise',c(data="matrixOrframe",time="numeric",sampleID="factorOrcharacterOrnumeric",log='missingOrlogical',numCores="missingOrnumeric"), function(data,time,sampleID,log,numCores){
+#   invest.Noise(data=data,time=time,sampleID=sampleID,log=log,numCores=numCores)
+# })
 #' @docType methods
 #' @rdname investNoise-methods
 #' @export
-setGeneric('investNoise',function(data,time,sampleID,log,numCores){standardGeneric('investNoise')})
-setClassUnion("missingOrnumeric", c("missing", "numeric"))
-setClassUnion("missingOrlogical", c("missing", "logical"))
-setClassUnion("factorOrcharacterOrnumeric", c( "factor","character","numeric"))
-setClassUnion("matrixOrframe",c('matrix','data.frame'))
-#' @rdname investNoise-methods
-#' @aliases investNoise,matrixOrframe,numeric,factorOrcharacterOrnumeric,missingOrnumeric-method
-#' @exportMethod investNoise
-
-setMethod('investNoise',c(data="matrixOrframe",time="numeric",sampleID="factorOrcharacterOrnumeric",log='missingOrlogical',numCores="missingOrnumeric"), function(data,time,sampleID,log,numCores){
-  invest.Noise(data=data,time=time,sampleID=sampleID,log=log,numCores=numCores)
-})
-
-invest.Noise <- function(data,time,sampleID,log,numCores){
+investNoise <- function(data,time,sampleID,log,numCores){
   nr <- nrow(data)
   nc <- ncol(data)
   
@@ -116,7 +117,7 @@ invest.Noise <- function(data,time,sampleID,log,numCores){
   
   })
   
-
+  stopCluster(cl)
   ratio.sd <- unlist(sapply(new.data,'[','sd.time'))
   ratioInd.sd <- unlist(sapply(new.data,'[','sd.ind'))
   tl <-length(unique(time))

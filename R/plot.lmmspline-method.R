@@ -23,9 +23,9 @@
 #' @importFrom stats spline na.omit
 #' @param x An object of class \code{lmmspline}.
 #' @param y \code{character} or \code{numeric} value. Determining which feature should be plotted can be either the index or the name of the feature. 
-#' @param smooth an optional \code{logical} value. Default \code{FALSE}, if \code{TRUE} smooth representation of the fitted values. 
 #' @param data alternative \code{matrix} or \code{data.frame} containing the original data for visualisation purposes.
 #' @param time alternative \code{numeric} indicating the sample time point. Vector of same length as row length of data for visualisation purposes.
+#' @param smooth an optional \code{logical} value. Default \code{FALSE}, if \code{TRUE} smooth representation of the fitted values. 
 #' @param mean alternative \code{logical} if the mean should be displayed. By default set to \code{TRUE}.
 #' @param \ldots Additional arguments which are passed to \code{plot}.
 #' @return plot showing raw data, mean profile and fitted profile. 
@@ -55,12 +55,13 @@
 
 #' @method plot lmmspline
 #' @export
-plot.lmmspline <- function(x, y, smooth, data,time,mean,...){
+plot.lmmspline <- function(x, y, data,time, smooth,mean,...){
   
   if(length(y)>1)
     stop('Can just plot a single feature.')
   name <- ""
-  
+  if(sum(is.na(x@predSpline[y,]))==length(x@predSpline[y,]))
+    stop('Error plotting molecule')
   if(missing(smooth))
     smooth <- F
   if(class(y)=='numeric'){
@@ -85,10 +86,12 @@ plot.lmmspline <- function(x, y, smooth, data,time,mean,...){
      p <- plotLmms(model,smooth=smooth,name,mean,...)
   }
   }else{
+    t <- as.numeric(colnames(x@predSpline))
+    
     if(x@derivative){
       p <- plotdataLMMS(t,x@predSpline[y,],smooth,name,data,time,y,mean,...)
     }else{
-      t <- as.numeric(colnames(x@predSpline))
+
       p <- plotdataLMMS(t,x@predSpline[y,],smooth,name,data,time,y,mean,...)
   }
 }
@@ -97,7 +100,9 @@ return(p)
 
 plotdataLMMS <- function(x,y,smooth,name,data,time,mol,mean,...){
   Time <- Intensity <- Model <- NULL
-  g <- ggplot()
+  if(sum(is.na(x))==length(x))
+    return('Error plotting molecule')
+  g <- ggplot()+ggtitle(name)
   if(missing(mean))
     mean <- FALSE
   if(missing(data)|missing(time)){  
@@ -107,10 +112,13 @@ plotdataLMMS <- function(x,y,smooth,name,data,time,mol,mean,...){
     }else{    
       s <- data.frame(Time = x,Intensity = unlist(y),Model="Fitted")
     }
-    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=1)
+    if(mean)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype='Mean'),size=1,data=s,fun.y=function(x)mean(x), geom="line",na.rm = T)
+    
   }else{
     s <- data.frame(Time = time,Intensity = data[,mol],Model="Mean")
-    g <- g+ geom_point(aes(x = Time,y=Intensity),data = s,size=0.5,na.rm = T)
+    g <- g+ geom_point(aes(x = Time,y=Intensity),alpha=0.5,data = s,size=3,na.rm = T)
     if(mean)
       g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=s,fun.y=function(x)mean(x), geom="line",na.rm = T)
     if(smooth){      
@@ -120,7 +128,7 @@ plotdataLMMS <- function(x,y,smooth,name,data,time,mol,mean,...){
     }else{
       s <- data.frame(Time = x,Intensity=unlist(y),Model="Fitted")
     }
-    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=1)
   }
   return(g)
 }
@@ -137,10 +145,10 @@ plotLmms <- function(model,smooth,name,mean,...){
   
   if(cl=="lm"){
 
-    dfmain <- data.frame(Intensity=model$model$Expr,Time=model$model$time,size=0.7,Model="Mean")
-    g <- ggplot() + geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+    dfmain <- data.frame(Intensity=model$model$Expr,Time=model$model$time,size=1,Model="Mean")
+    g <- ggplot() + geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) +ggtitle(name)
     if(mean)
-      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
      
     if(smooth){ 
       spl <- spline(x = model$model$time, y = fitted(model), n = 500, method = "natural")
@@ -149,15 +157,13 @@ plotLmms <- function(model,smooth,name,mean,...){
       s <- data.frame(Intensity=fitted(model),Time=model$model$time,Model="Fitted")
     }
     
-    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=0.5)
+    g <- g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),data = s,size=1)
     
-  }
-  
-  if(cl=='lme'){
-    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=0.7,Model="Mean")
-    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
+  }else if(cl=='lme'){
+    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=1,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),alpha=0.5,size=3,data = dfmain,na.rm = T) +ggtitle(name)
     if(mean)
-      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+      g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
    
     f <- fitted(model,level=1)
@@ -167,8 +173,10 @@ plotLmms <- function(model,smooth,name,mean,...){
     }else{
       s <- data.frame(Intensity=na.omit(f),Time=model$data$time[!is.na(f)],Model="Fitted")
     }
+  }else{
+    return('Error plotting molecule')
   }
-  g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
+  g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=1,data =s)
   return(g)
 }
 
@@ -180,8 +188,8 @@ plotLmmsDeriv <- function(model,smooth,data,name,...){
 
   if(cl=="lm"){
     dfmain <- data.frame(Intensity=model$model$Expr,Time=model$model$time,Model="Mean")
-    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
-    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) + ggtitle(name)
+    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
     if(smooth){
       spl <- spline(x =  as.numeric(colnames(data)), y = as.numeric(as.character(data)), n = 500, method = "natural")
@@ -189,13 +197,12 @@ plotLmmsDeriv <- function(model,smooth,data,name,...){
     }else{
       s <- data.frame(Time=as.numeric(colnames(data)),Intensity=as.numeric(as.character(data)),Model="Derivative")
     }
-    g <- g+geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
-  }
-  
-  if(cl=='lme'){
-    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=0.7,Model="Mean")
-    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),data = dfmain,na.rm = T) 
-    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=0.2,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
+    g <- g+geom_line(aes(x = Time,y=Intensity,linetype=Model),size=1,data =s)
+  }else if(cl=='lme'){
+    dfmain <- data.frame(Intensity=model$data$Expr,Time=model$data$time,size=1,Model="Mean")
+    g <- ggplot()+ geom_point(aes(x=Time,y=Intensity),alpha=0.5,size=3,data = dfmain,na.rm = T) + ggtitle(name)
+    
+    g <- g + stat_summary(aes(x=Time,y=Intensity,linetype=Model),size=1,data=dfmain,fun.y=function(x)mean(x), geom="line",na.rm = T)
 
     if(smooth){
       spl <- spline(x =as.numeric(colnames(data)), y = data, n = 500, method = "natural")
@@ -203,7 +210,9 @@ plotLmmsDeriv <- function(model,smooth,data,name,...){
     }else{
       s <- data.frame(Intensity=as.numeric(as.character(data)),Time=as.numeric(colnames(data)),Model="Derivative")
     }
-    g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=0.1,data =s)
+    g<-  g+ geom_line(aes(x = Time,y=Intensity,linetype=Model),size=1,data =s)
+  }else{
+    g <- 'Error plotting molecule'
   }
   
   return(g)
